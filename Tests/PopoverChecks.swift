@@ -33,30 +33,35 @@ extension TestMain {
             defer { presenter.close(); sourceWindow.close() }
             let expected = sourceWindow.convertToScreen(source.convert(source.bounds, to: nil))
             try expect(presenter.show(relativeTo: source))
-            try expect(presenter.anchorWindow?.frame == expected)
+            try expect(presenter.anchorRect == expected)
             let panelFrame = try await settledFrame(of: host.view.window!)
-            let anchor = presenter.anchorWindow!
+            let panel = presenter.panelWindow!
             let destination = NSScreen.screens.dropFirst().first?.visibleFrame ?? screen.offsetBy(dx: -100, dy: -100)
             sourceWindow.setFrameOrigin(NSPoint(x: destination.midX, y: destination.midY))
             try await Task.sleep(for: .milliseconds(80))
-            try expect(anchor.frame == expected, "Anchor followed the moving status window")
+            try expect(presenter.anchorRect == expected, "Anchor followed the moving status window")
             try expect(host.view.window?.frame == panelFrame, "Open panel moved: \(panelFrame) → \(String(describing: host.view.window?.frame))")
             try expect(presenter.show(relativeTo: source))
-            try expect(presenter.anchorWindow === anchor && host.view.window?.frame == panelFrame, "Reopen relocated the existing panel")
-            try expect(!anchor.collectionBehavior.contains(.moveToActiveSpace) && anchor.ignoresMouseEvents && !anchor.hidesOnDeactivate)
-            popover.performClose(nil)
-            try await wait { presenter.anchorWindow == nil }
-            try expect(!anchor.isVisible)
+            try expect(presenter.panelWindow === panel && host.view.window?.frame == panelFrame, "Reopen relocated the existing panel")
+            try expect(!panel.collectionBehavior.contains(.moveToActiveSpace) && !panel.hidesOnDeactivate && panel.styleMask.contains(.borderless))
+            host.preferredContentSize = NSSize(width: 180, height: 160)
+            try await wait { abs(panel.frame.height - 160) < 1 }
+            try expect(abs(panel.frame.maxY - panelFrame.maxY) < 1, "Resizing moved the top edge")
+            panel.cancelOperation(nil)
+            try await wait { presenter.panelWindow == nil }
+            try expect(!panel.isVisible)
             let nextExpected = sourceWindow.convertToScreen(source.convert(source.bounds, to: nil))
             try expect(presenter.show(relativeTo: source))
-            try expect(presenter.anchorWindow?.frame == nextExpected, "New opening did not use the clicked screen")
+            try expect(presenter.anchorRect == nextExpected, "New opening did not use the clicked screen")
+            NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: NSApp)
+            try expect(!presenter.isShown && presenter.panelWindow == nil, "Switching apps did not dismiss the panel")
         }
         await test("Popover anchor rejects unattached views and closes idempotently") {
             let presenter = PopoverPresenter(popover: NSPopover())
             try expect(!presenter.show(relativeTo: NSView()))
-            try expect(presenter.anchorWindow == nil)
+            try expect(presenter.panelWindow == nil)
             presenter.close(); presenter.close()
-            try expect(presenter.anchorWindow == nil)
+            try expect(presenter.panelWindow == nil)
         }
         await test("Settings viewport is captured independently of later main-screen changes") {
             let rig = TestRig(); defer { rig.close() }

@@ -103,7 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             quit.target = NSApp
             menu.addItem(quit)
             if let button = item.button { menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.maxY), in: button) }
-        } else if popover.isShown { popover.performClose(nil) }
+        } else if presenter.isShown { presenter.close() }
         else { showPopover() }
     }
 
@@ -115,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.activate(ignoringOtherApps: true)
             return
         }
-        if !popover.isShown, let host = popover.contentViewController as? NSHostingController<HeadphonePanel> {
+        if !presenter.isShown, let host = popover.contentViewController as? NSHostingController<HeadphonePanel> {
             host.rootView = HeadphonePanel(store: store, settingsViewportHeight: PopoverPresenter.settingsHeight(on: button.window?.screen))
         }
         presenter.show(relativeTo: button)
