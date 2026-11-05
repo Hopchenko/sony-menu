@@ -26,5 +26,15 @@ if [[ ! -e "$app_destination" && -d "$legacy_destination" ]]; then
 fi
 ditto "$app_source" "$app_destination"
 python3 Tools/verify-app.py "$app_destination"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app_destination"
+register='/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister'
+# Replace this app's cached record: forcing registration alone can leave the
+# renamed app searchable but absent from the full Apps grid.
+if registration_output=$("$register" -u "$app_destination" 2>&1); then
+  :
+elif [[ "$registration_output" != *'-10814'* ]]; then
+  echo "$registration_output" >&2
+  exit 1
+fi
+# -10814 means there was no existing registration (a first installation).
+"$register" -f "$app_destination"
 echo "Installed: $app_destination"

@@ -145,7 +145,7 @@ zsh install.sh
 open '/Applications/Sony Headphone Control.app'
 ```
 
-The build is created at `build/Applications.noindex/Sony Headphone Control.app` and signed locally. The `.noindex` directory keeps development copies out of Spotlight. Builds also retire this project’s older generated app copies; the installer registers the single copy in Applications. Quit any
+The build is created at `build/Applications.noindex/Sony Headphone Control.app` and signed locally. The `.noindex` directory keeps development copies out of Spotlight. Builds also retire this project’s older generated app copies; the installer replaces only this app’s cached launcher registration for the single copy in Applications. This also addresses a stale entry that could appear in search but be missing from the full Apps grid. Quit any
 running instance before launching a rebuilt version.
 
 To install the built app in Applications, run `zsh install.sh`. A native icon
