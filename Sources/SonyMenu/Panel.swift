@@ -99,6 +99,23 @@ struct HeadphonePanel: View {
                 }
             }.padding(13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
 
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Microphone").font(.system(size: 13, weight: .medium))
+                Picker("Mac microphone", selection: Binding(get: { store.microphones.selectedID }, set: { store.selectMicrophone($0) })) {
+                    if !store.microphones.devices.contains(where: { $0.id == store.microphones.selectedID }) {
+                        Text("No microphone selected").tag(store.microphones.selectedID)
+                    }
+                    ForEach(store.microphones.devices) { device in Text(device.name).tag(device.id) }
+                }.labelsHidden().disabled(store.microphones.devices.isEmpty)
+                Text("Changes Mac input. Meet can use its own selection.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                if store.microphones.devices.first(where: { $0.id == store.microphones.selectedID })?.name == "WH-1000XM3" {
+                    Text("The headphone mic may enable call sidetone.")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+                .padding(13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
+
             if !store.ready {
                 Button(store.connection == .connecting ? "Connecting…" : "Connect headphones") { store.connect() }
                     .buttonStyle(.borderedProminent).disabled(store.connection == .connecting)
@@ -159,7 +176,7 @@ struct HeadphonePanel: View {
                 Divider()
                 settingToggle("Show battery in menu bar", binding: $store.showBattery)
             }.padding(.horizontal, 13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
-            Text("Sony Menu 1.0 · Unofficial Sony controller").font(.system(size: 10)).foregroundStyle(.tertiary).padding(.vertical, 4)
+            Text("Sony Menu 1.1 · Unofficial Sony controller").font(.system(size: 10)).foregroundStyle(.tertiary).padding(.vertical, 4)
         }.padding(.bottom, 12)
     }
 

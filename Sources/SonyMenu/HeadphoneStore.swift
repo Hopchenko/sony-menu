@@ -10,6 +10,7 @@ final class HeadphoneStore: ObservableObject {
     @Published var notice: String?
     @Published var bluetoothConnected = false
     @Published var outputVolume: Double?
+    @Published var microphones = MicrophoneState()
     @Published var sleepStatus: String?
     @Published var appearance: AppAppearance {
         didSet { defaults.set(appearance.rawValue, forKey: "appearance") }
@@ -90,6 +91,10 @@ final class HeadphoneStore: ObservableObject {
                 self.outputVolume = value
             }
         )
+        self.platform.observeMicrophones { [weak self] state in
+            guard let self, !self.stopped, self.microphones != state else { return }
+            self.microphones = state
+        }
         checkConnection()
     }
 
@@ -199,11 +204,29 @@ final class HeadphoneStore: ObservableObject {
         } catch { notice = "Login setting could not be changed: \(error.localizedDescription)" }
     }
 
+    func selectMicrophone(_ id: UInt32) {
+        guard !stopped else { return }
+        guard microphones.devices.contains(where: { $0.id == id }) else {
+            microphones = platform.readMicrophones()
+            notice = "That microphone is no longer available."
+            return
+        }
+        guard platform.selectMicrophone(id) else {
+            microphones = platform.readMicrophones()
+            notice = "macOS could not change the microphone."
+            return
+        }
+        microphones = platform.readMicrophones()
+        if microphones.selectedID != id { notice = "The microphone change was not confirmed by macOS." }
+        else { notice = nil }
+    }
+
     func refresh() {
         guard !stopped else { return }
         if ready { client.refresh() }
         else { retryAttempt = 0; checkConnection() }
         platform.refreshVolume()
+        microphones = platform.readMicrophones()
         launchAtLogin = platform.loginEnabled
     }
 

@@ -434,6 +434,48 @@ enum TestMain {
             Diagnostics.shared.log("not collected")
             try expect(Diagnostics.shared.entries.count == count)
         }
+        await test("Microphone selector reads current input without changing it") {
+            let rig = TestRig(); defer { rig.close() }
+            try expect(rig.store.microphones.devices.count == 2 && rig.store.microphones.selectedID == 2)
+            try expect(rig.platform.microphoneSelections.isEmpty)
+        }
+        await test("User can switch microphone in either direction") {
+            let rig = TestRig(); defer { rig.close() }
+            rig.store.selectMicrophone(1)
+            try expect(rig.store.microphones.selectedID == 1 && rig.store.notice == nil)
+            rig.store.selectMicrophone(2)
+            try expect(rig.store.microphones.selectedID == 2 && rig.platform.microphoneSelections == [1, 2])
+        }
+        await test("External microphone changes update the selector without writing back") {
+            let rig = TestRig(); defer { rig.close() }
+            rig.platform.microphones.selectedID = 1
+            rig.platform.onMicrophones?(rig.platform.microphones)
+            try expect(rig.store.microphones.selectedID == 1 && rig.platform.microphoneSelections.isEmpty)
+        }
+        await test("Unavailable microphone is rejected and refreshed") {
+            let rig = TestRig(); defer { rig.close() }
+            rig.platform.microphones.devices.removeAll { $0.id == 2 }
+            rig.platform.onMicrophones?(rig.platform.microphones)
+            rig.store.selectMicrophone(2)
+            try expect(rig.platform.microphoneSelections.isEmpty && rig.store.notice?.contains("no longer available") == true)
+        }
+        await test("Microphone write failure keeps the actual input selected") {
+            let rig = TestRig(); defer { rig.close() }
+            rig.platform.microphoneSelectionSucceeds = false
+            rig.store.selectMicrophone(1)
+            try expect(rig.store.microphones.selectedID == 2 && rig.store.notice?.contains("could not change") == true)
+        }
+        await test("Unconfirmed microphone change is reported instead of assumed") {
+            let rig = TestRig(); defer { rig.close() }
+            rig.platform.microphoneReadbackSucceeds = false
+            rig.store.selectMicrophone(1)
+            try expect(rig.store.microphones.selectedID == 2 && rig.store.notice?.contains("not confirmed") == true)
+        }
+        await test("Shutdown removes microphone observation and prevents routing changes") {
+            let rig = TestRig(); defer { rig.close() }
+            rig.store.shutdown(); rig.store.selectMicrophone(1)
+            try expect(rig.platform.onMicrophones == nil && rig.platform.microphoneSelections.isEmpty)
+        }
     }
 
     static func interfaceTests() async {

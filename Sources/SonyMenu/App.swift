@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Combine
+import IOBluetooth
 
 @main
 @MainActor
@@ -26,7 +27,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "local.sonymenu.app")
             .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
         if !others.isEmpty { NSApp.terminate(nil); return }
-        store = HeadphoneStore()
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
             button.image = NSImage(systemSymbolName: "headphones", accessibilityDescription: "Sony Menu")
@@ -37,6 +37,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.toolTip = "Sony Menu — WH-1000XM3"
         }
+        // Some macOS versions synchronously wait for CoreBluetooth callbacks
+        // on the first IOBluetooth query. Keep the main run loop available.
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            _ = IOBluetoothDevice.pairedDevices()
+            DispatchQueue.main.async { self?.finishLaunching() }
+        }
+    }
+
+    private func finishLaunching() {
+        store = HeadphoneStore()
         let host = NSHostingController(rootView: HeadphonePanel(store: store))
         host.sizingOptions = [.preferredContentSize]
         popover.contentViewController = host
@@ -56,6 +66,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func togglePopover() {
+        if store == nil {
+            let menu = NSMenu()
+            let loading = NSMenuItem(title: "Initializing Bluetooth…", action: nil, keyEquivalent: "")
+            loading.isEnabled = false
+            menu.addItem(loading)
+            let quit = NSMenuItem(title: "Quit Sony Menu", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+            quit.target = NSApp; menu.addItem(quit)
+            if let button = item.button { menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.maxY), in: button) }
+            return
+        }
         if NSApp.currentEvent?.type == .rightMouseUp {
             let menu = NSMenu()
             let quit = NSMenuItem(title: "Quit Sony Menu", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -67,7 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showPopover() {
-        guard let button = item.button else { return }
+        guard let button = item.button, store != nil else { return }
         store.refresh()
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         NSApp.activate(ignoringOtherApps: true)
@@ -92,6 +112,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             result["noiseMode"] = store.state.noiseMode.map { String(describing: $0) }
             result["ambientLevel"] = store.state.ambientLevel
             result["volume"] = store.state.volume
+            result["microphoneDevices"] = store.microphones.devices.map { ["id": $0.id, "name": $0.name] as [String: Any] }
+            result["selectedMicrophoneID"] = store.microphones.selectedID
+            if CommandLine.arguments.contains("--verify-microphone") {
+                let original = MacMicrophone.read()
+                if original.devices.contains(where: { $0.id == original.selectedID }),
+                   let alternative = original.devices.first(where: { $0.id != original.selectedID }) {
+                    result["microphoneChangeSucceeded"] = MacMicrophone.select(alternative.id)
+                    try? await Task.sleep(for: .milliseconds(400))
+                    result["externalMicrophoneChangeSynced"] = store.microphones.selectedID == alternative.id
+                    store.selectMicrophone(original.selectedID)
+                    try? await Task.sleep(for: .milliseconds(400))
+                    result["originalMicrophoneRestored"] = MacMicrophone.read().selectedID == original.selectedID
+                } else { result["microphoneCheckSkipped"] = "Two available microphones are required" }
+            }
             if CommandLine.arguments.contains("--verify-idle") {
                 let checks = store.connectionCheckCount
                 let queries = Diagnostics.shared.entries.filter { $0.contains("outgoing:") && !$0.contains("outgoing: ACK") }.count

@@ -86,6 +86,11 @@ final class FakePlatform: HeadphonePlatform {
     var volume: Double? = 0.4
     var volumeWrites: [Double] = []
     var writeSucceeds = true
+    var microphones = MicrophoneState(devices: [MicrophoneDevice(id: 1, name: "MacBook Pro Microphone"), MicrophoneDevice(id: 2, name: "WH-1000XM3")], selectedID: 2)
+    var microphoneSelections: [UInt32] = []
+    var microphoneSelectionSucceeds = true
+    var microphoneReadbackSucceeds = true
+    var onMicrophones: ((MicrophoneState) -> Void)?
     var disconnectResult: IOReturn = 0
     var disconnectCount = 0
     var loginThrows = false
@@ -112,12 +117,20 @@ final class FakePlatform: HeadphonePlatform {
         if loginThrows { throw NSError(domain: "Login", code: 1) }
         loginEnabled = enabled
     }
+    func readMicrophones() -> MicrophoneState { microphones }
+    func observeMicrophones(_ changed: @escaping (MicrophoneState) -> Void) { onMicrophones = changed; changed(microphones) }
+    func selectMicrophone(_ id: UInt32) -> Bool {
+        guard microphoneSelectionSucceeds else { return false }
+        microphoneSelections.append(id)
+        if microphoneReadbackSucceeds { microphones.selectedID = id; onMicrophones?(microphones) }
+        return true
+    }
     func start(connection: @escaping () -> Void, sleep: @escaping () -> Void, wake: @escaping () -> Void, unlock: @escaping () -> Void, volume: @escaping (Double?) -> Void) {
         onConnection = connection; onSleep = sleep; onWake = wake; onUnlock = unlock; onVolume = volume
         volume(self.volume)
     }
     func refreshVolume() { onVolume?(volume) }
-    func stop() { stopped = true; onConnection = nil; onSleep = nil; onWake = nil; onUnlock = nil; onVolume = nil }
+    func stop() { stopped = true; onConnection = nil; onSleep = nil; onWake = nil; onUnlock = nil; onVolume = nil; onMicrophones = nil }
     func externalVolume(_ value: Double?) { volume = value; volumeEventCount += 1; onVolume?(value) }
 }
 

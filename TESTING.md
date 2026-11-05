@@ -6,7 +6,7 @@
 zsh test.sh
 ```
 
-The suite currently contains 49 named tests. It compiles the production source
+The suite currently contains 56 named tests. It compiles the production source
 with LLVM instrumentation, runs against isolated preferences and simulated
 Bluetooth/macOS services, and renders native SwiftUI panels in Light, Dark,
 and Device appearance. It never changes your real headphone or login settings.
@@ -23,6 +23,7 @@ Outputs:
 | Protocol framing | Known wire fixture, every-byte payload, every split boundary, combined frames, checksum/length validation, illegal escapes, bounded parser and recovery |
 | Bluetooth client | Handshake, unsupported versions, replies/notifications, ACK sequencing, retries, timeouts, write failure, command coalescing, readback, cancellation |
 | Controls | Noise modes, ambient level and voice focus, value clamping, debounce, latest-command behavior, macOS volume reads/writes and external change notifications |
+| Microphone | Current input without auto-switching, selection in either direction, external routing updates, vanished devices, write/readback failures, shutdown cleanup |
 | Sleep and connection | Manual disconnect intent, optional reconnect, repeated background wake, unlock-before-wake, disabled sleep disconnect, pairing errors, bounded retries |
 | Lifecycle and efficiency | No idle polling or keepalive requests, cancelled work on sleep, subscriptions removed on shutdown, diagnostics disabled normally |
 | Interface | Light/Dark/Device panels, connected/disconnected/connecting/error/ambient layouts and size constraints |
@@ -50,6 +51,11 @@ Read-only diagnostics use `--diagnose` alone. Adding `--capture-preview` writes
 native Light and Dark screenshots under `/private/tmp`. Logs stay in memory
 during normal operation only when diagnostic mode is explicitly enabled; the
 JSON file is written only by a diagnostic run.
+
+`--verify-microphone` briefly switches to another available Mac input, checks
+that the native input-change notification reaches the selector, and restores
+the original input. It needs two available microphones and does not change
+the selected output device or record audio.
 
 ## Manual checks
 

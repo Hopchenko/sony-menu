@@ -12,6 +12,9 @@ protocol HeadphonePlatform: AnyObject {
     func disconnect() -> IOReturn
     func readVolume() -> Double?
     func writeVolume(_ value: Double) -> Bool
+    func readMicrophones() -> MicrophoneState
+    func selectMicrophone(_ id: UInt32) -> Bool
+    func observeMicrophones(_ changed: @escaping (MicrophoneState) -> Void)
     func setLogin(_ enabled: Bool) throws
     func start(connection: @escaping () -> Void, sleep: @escaping () -> Void, wake: @escaping () -> Void, unlock: @escaping () -> Void, volume: @escaping (Double?) -> Void)
     func refreshVolume()
@@ -27,6 +30,7 @@ final class MacHeadphonePlatform: NSObject, HeadphonePlatform {
     private var observers: [NSObjectProtocol] = []
     private var unlockObserver: NSObjectProtocol?
     private var volumeObserver: HeadphoneVolumeObserver?
+    private var microphoneObserver: MicrophoneObserver?
     private var onConnection: (() -> Void)?
     private var stopped = false
 
@@ -39,6 +43,9 @@ final class MacHeadphonePlatform: NSObject, HeadphonePlatform {
     func disconnect() -> IOReturn { device?.closeConnection() ?? kIOReturnNotFound }
     func readVolume() -> Double? { HeadphoneVolume.read() }
     func writeVolume(_ value: Double) -> Bool { HeadphoneVolume.write(value) }
+    func readMicrophones() -> MicrophoneState { MacMicrophone.read() }
+    func selectMicrophone(_ id: UInt32) -> Bool { MacMicrophone.select(id) }
+    func observeMicrophones(_ changed: @escaping (MicrophoneState) -> Void) { microphoneObserver = MicrophoneObserver(changed: changed) }
     func setLogin(_ enabled: Bool) throws {
         if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
     }
@@ -98,6 +105,7 @@ final class MacHeadphonePlatform: NSObject, HeadphonePlatform {
         if let unlockObserver { DistributedNotificationCenter.default().removeObserver(unlockObserver) }
         unlockObserver = nil
         volumeObserver?.stop(); volumeObserver = nil
+        microphoneObserver?.stop(); microphoneObserver = nil
         onConnection = nil
     }
 }

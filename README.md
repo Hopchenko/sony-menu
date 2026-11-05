@@ -25,6 +25,8 @@ Screenshots are rendered from the native app connected to a WH-1000XM3.
 - **Volume sync:** the slider, macOS controls, and headphone gestures use the
   same Core Audio device volume. External changes update the panel live.
 - **Live status:** battery percentage, Bluetooth connection, and codec.
+- **Microphone selector:** switch the Mac’s default input between available
+  microphones whenever you want, with live updates when macOS routing changes.
 - **Disconnect on sleep:** release the headphones when the Mac sleeps, with
   optional reconnection after unlock. Manual reconnection is the default.
 - **Appearance:** Device, Light, or Dark, saved between launches.
@@ -57,7 +59,7 @@ To launch at login, first put the app at its permanent location, then enable
 | --- | --- |
 | Headphones | Sony WH-1000XM3; tested with firmware 4.5.2 |
 | Mac | Apple Silicon (arm64) |
-| macOS | Minimum deployment target 14; hardware validation on macOS 26 |
+| macOS | Minimum deployment target 14; hardware validation on macOS 27.2 |
 | Other Sony models | Not validated; shared protocol support does not guarantee compatibility |
 | USB | Not required; control uses classic Bluetooth RFCOMM |
 
@@ -78,6 +80,22 @@ macOS distributed screen-unlock notification, which is not a documented public
 AppKit API. Long closed-lid/backpack periods and real login/unlock behavior
 still need broader testing. The live diagnostic test verifies the disconnect
 handler without putting the computer to sleep.
+
+## Calls and microphone control
+
+The main panel’s **Microphone** dropdown changes the Mac’s default input without
+selecting a different output device. You can switch back and forth at any
+time; the app does not choose for you or record audio.
+
+Using the WH-1000XM3 microphone during a call can enable sidetone: microphone
+sound is fed back into the earcups so you can hear yourself. This can resemble
+Ambient Sound even when the reported noise-control mode has not changed.
+Choosing the Mac’s built-in microphone can avoid that headset call behavior.
+This is an input-routing workaround, not a firmware sidetone-disable command.
+
+Google Meet and other apps may select their own microphone explicitly. To
+follow this selector, use the system default input in the calling app; otherwise
+change the microphone in the app’s own audio settings.
 
 ## Build from source
 
@@ -100,9 +118,10 @@ running instance before launching a rebuilt version.
 zsh test.sh
 ```
 
-**49 automated tests** cover framing and stream recovery, Bluetooth command
+**56 automated tests** cover framing and stream recovery, Bluetooth command
 queues, retries and errors, preferences, appearance, volume synchronization,
-sleep/wake intent, lifecycle cleanup, idle behavior, and native panel rendering.
+sleep/wake intent, microphone routing and readback, lifecycle cleanup, idle
+behavior, and native panel rendering.
 They use simulated hardware and isolated preferences. CI runs the suite on
 macOS and uploads coverage, UI previews, and a packaged app.
 
