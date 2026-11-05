@@ -6,7 +6,7 @@
 zsh test.sh
 ```
 
-The suite currently contains 56 named tests. It compiles the production source
+The suite currently contains 58 named tests. It compiles the production source
 with LLVM instrumentation, runs against isolated preferences and simulated
 Bluetooth/macOS services, and renders native SwiftUI panels in Light, Dark,
 and Device appearance. It never changes your real headphone or login settings.
@@ -16,6 +16,12 @@ Outputs:
 - `build/coverage.txt`: per-file line and function coverage.
 - `build/tests.profdata`: merged LLVM coverage data.
 - `build/test-previews/`: native panel screenshots for visual review.
+
+`python3 Tools/verify-app.py` checks the distributable's bundle identifier,
+Bluetooth usage description, executable, multi-resolution icon, third-party
+notices, and code signature. CI runs this packaging check as well as the suite.
+For a locally certificate-signed bundle, run it in the normal user session
+where the user keychain's trust settings are available.
 
 | Area | Automated checks |
 | --- | --- |
@@ -56,6 +62,10 @@ JSON file is written only by a diagnostic run.
 that the native input-change notification reaches the selector, and restores
 the original input. It needs two available microphones and does not change
 the selected output device or record audio.
+
+`--inspect-sidetone` sends only read-only supported-function, general-setting,
+and call-setting inquiries. It does not send any setting writes and never
+runs during normal operation. See [the XM3 investigation](docs/xm3-sidetone.md).
 
 ## Manual checks
 

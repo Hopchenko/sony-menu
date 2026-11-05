@@ -99,22 +99,6 @@ struct HeadphonePanel: View {
                 }
             }.padding(13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Microphone").font(.system(size: 13, weight: .medium))
-                Picker("Mac microphone", selection: Binding(get: { store.microphones.selectedID }, set: { store.selectMicrophone($0) })) {
-                    if !store.microphones.devices.contains(where: { $0.id == store.microphones.selectedID }) {
-                        Text("No microphone selected").tag(store.microphones.selectedID)
-                    }
-                    ForEach(store.microphones.devices) { device in Text(device.name).tag(device.id) }
-                }.labelsHidden().disabled(store.microphones.devices.isEmpty)
-                Text("Changes Mac input. Meet can use its own selection.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
-                if store.microphones.devices.first(where: { $0.id == store.microphones.selectedID })?.name == "WH-1000XM3" {
-                    Text("The headphone mic may enable call sidetone.")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-                .padding(13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
 
             if !store.ready {
                 Button(store.connection == .connecting ? "Connecting…" : "Connect headphones") { store.connect() }
@@ -149,6 +133,26 @@ struct HeadphonePanel: View {
         }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
     }
 
+    private var microphoneSettings: some View {
+        VStack(alignment: .leading, spacing: 8) {
+                Text("Microphone").font(.system(size: 13, weight: .medium))
+                Picker("Mac microphone", selection: Binding(get: { store.microphones.selectedID }, set: { store.selectMicrophone($0) })) {
+                    if !store.microphones.devices.contains(where: { $0.id == store.microphones.selectedID }) {
+                        Text("No microphone selected").tag(store.microphones.selectedID)
+                    }
+                    ForEach(store.microphones.devices) { device in Text(device.name).tag(device.id) }
+                }.labelsHidden().disabled(store.microphones.devices.isEmpty)
+                Text("Changes Mac input. Meet can use its own selection.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                if store.microphones.devices.first(where: { $0.id == store.microphones.selectedID })?.name == "WH-1000XM3" {
+                    Text("The headphone mic may enable call sidetone.")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+                .padding(13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
+
+    }
+
     private var settings: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Settings").font(.system(size: 15, weight: .semibold))
@@ -161,6 +165,8 @@ struct HeadphonePanel: View {
             }.padding(.horizontal, 13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
             Text(sleepSummary).font(.system(size: 12)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 3)
+            sectionLabel("CALL AUDIO").padding(.top, 3)
+            microphoneSettings
             sectionLabel("GENERAL").padding(.top, 3)
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {

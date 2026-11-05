@@ -217,6 +217,25 @@ enum TestMain {
             rig.client.setAmbientLevel(4); rig.client.setVolume(22)
             try expect(rig.transport.sent.isEmpty)
         }
+        await test("Sidetone research probe sends only explicit read inquiries") {
+            let rig = TestRig(); defer { rig.close() }
+            try await wait { rig.store.ready && rig.store.state.volume != nil }
+            let count = rig.transport.commands.count
+            rig.client.inspectCallCapabilities()
+            try await wait { rig.transport.commands.count >= count + 6 }
+            let inquiries = Array(rig.transport.commands.dropFirst(count)).map(\.payload)
+            try expect(inquiries == [[6,0],[0xD0,0xD1,1],[0xD0,0xD2,1],[0xD0,0xD3,1],[0xF0,8],[0xF6,8]])
+            try expect(!inquiries.contains { [0x68,0xD8,0xF8].contains($0.first ?? 0) })
+        }
+        await test("Sidetone inquiry is never run while disconnected or implicitly on refresh") {
+            let rig = TestRig(start: false); defer { rig.close() }
+            rig.client.inspectCallCapabilities(); try expect(rig.transport.sent.isEmpty)
+            rig.client.connect(address: "test", deviceName: "WH-1000XM3")
+            try await wait { rig.client.connectionState == .ready && rig.client.state.volume != nil }
+            rig.client.refresh()
+            try await Task.sleep(for: .milliseconds(20))
+            try expect(!rig.transport.commands.contains { $0.payload == [6,0] || $0.payload.first == 0xD0 || $0.payload == [0xF6,8] })
+        }
         await test("Extended setters use known payloads and verify after ACK") {
             let rig = TestRig(); defer { rig.close() }
             try await wait { rig.store.ready && rig.store.state.volume != nil }

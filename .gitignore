@@ -2,5 +2,8 @@ build/
 .DS_Store
 *.profraw
 *.profdata
+*.p12
+*.pfx
+*.key
 /5250941.jpg
 /134a2eefe22c3000f28cf57296b6bcb5.avif

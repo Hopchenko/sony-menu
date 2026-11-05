@@ -102,6 +102,21 @@ final class SonyV1Client {
         enqueue([SonyV1Opcode.batteryGet, 0x00], label: "Battery sample")
     }
 
+    /// Explicit read-only research probe. Never used during normal idle work.
+    /// V1 general-setting slots can describe their function in the response.
+    func inspectCallCapabilities() {
+        guard connectionState == .ready else { return }
+        enqueue([0x06, 0x00], label: "Supported functions inquiry")
+        for slot: UInt8 in [0xD1, 0xD2, 0xD3] {
+            enqueue([0xD0, slot, 0x01], label: "General setting capability \(slot)")
+        }
+        // The documented newer call-setting inquiry uses the same GET opcodes.
+        // Reading reserved type 0x08 tests for an unadvertised backport; no SET
+        // is sent and no response is treated as support without validation.
+        enqueue([0xF0, 0x08], label: "Call settings capability inquiry")
+        enqueue([0xF6, 0x08], label: "Call settings parameter inquiry")
+    }
+
     func setNoiseMode(_ mode: SonyV1NoiseMode, ambientLevel: Int? = nil) {
         guard connectionState == .ready else { return }
         let payload = profile.noisePayload(

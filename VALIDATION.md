@@ -14,7 +14,7 @@ firmware 4.5.2.
 - Live Core Audio volume-change notifications reached the panel within a
   250 ms verification window after a write outside the app's state store.
 - An app volume write was read back from macOS; the original volume was restored.
-- All 56 simulated-device, preferences, lifecycle, protocol and UI tests passed.
+- All 58 simulated-device, preferences, lifecycle, protocol and UI tests passed.
 - Light, Dark and Device appearances were rendered; live appearance changes
   on an existing panel and preference persistence were tested.
 - The updated event-driven build passed all 13 live diagnostic assertions,
@@ -26,6 +26,22 @@ Version 1.1 adds microphone input selection with seven new simulated routing
 tests. Live native enumeration, input switching, notification synchronization,
 and restoration of the original microphone all passed on the connected Mac.
 Meet's own per-call input selection still requires a manual check.
+
+The user subsequently confirmed that selecting MacBook Pro Microphone inside
+Google Meet (rather than changing only the Mac default) resolved the call
+sidetone problem. Read-only XM3 capability checks found no exposed sidetone
+setting. Microphone controls now live in Settings → Call audio.
+
+Version 1.1.1 installs at `/Applications/Sony Menu.app` with an icon built from
+the same user-provided headphone picture shown in the panel. A dedicated local
+certificate was created in the user keychain with code-signing-only trust.
+Two rebuilds produced the same certificate-bound designated requirement,
+without a changing executable hash in that requirement. The installed bundle's
+signature, icon representations, executable and metadata passed verification.
+The first launch under the new certificate required Bluetooth approval and
+then completed the Sony handshake with authorized access.
+On the next launch, Bluetooth authorization was already `allowedAlways`
+(raw value 3) before initialization and the headphone connection became ready.
 
 The volume notification check simulates an external macOS volume change;
 physical headphone touch gestures still need a hands-on check. Device-list

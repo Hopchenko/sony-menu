@@ -9,5 +9,21 @@ swiftc -swift-version 5 -parse-as-library -O -module-cache-path /private/tmp/son
   -framework AppKit -framework SwiftUI -framework IOBluetooth -framework ServiceManagement -framework CoreAudio
 cp Resources/Info.plist "$app_path/Contents/Info.plist"
 cp Resources/Headphones.png Resources/ThirdPartyNotices.txt "$app_path/Contents/Resources/"
-codesign --force --sign - --identifier local.sonymenu.app "$app_path"
+if [[ -f Resources/AppIcon.png ]]; then
+  iconset_path="$PWD/build/AppIcon.iconset"
+  mkdir -p "$iconset_path"
+  for icon_size in 16 32 128 256 512; do
+    sips -z "$icon_size" "$icon_size" Resources/AppIcon.png --out "$iconset_path/icon_${icon_size}x${icon_size}.png" >/dev/null
+    retina_size=$((icon_size * 2))
+    sips -z "$retina_size" "$retina_size" Resources/AppIcon.png --out "$iconset_path/icon_${icon_size}x${icon_size}@2x.png" >/dev/null
+  done
+  iconutil -c icns "$iconset_path" -o "$app_path/Contents/Resources/AppIcon.icns"
+fi
+if [[ -n "${SONY_MENU_SIGNING_IDENTITY:-}" ]]; then
+  signing_identity="$SONY_MENU_SIGNING_IDENTITY"
+else
+  signing_identity=$(/usr/bin/security find-identity -v -p codesigning | /usr/bin/awk '/"Sony Menu Local Signing"/ {print $2; exit}')
+  signing_identity="${signing_identity:--}"
+fi
+codesign --force --sign "$signing_identity" --timestamp=none --identifier local.sonymenu.app "$app_path"
 echo "Built: $app_path"

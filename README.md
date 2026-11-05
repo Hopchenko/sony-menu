@@ -83,7 +83,7 @@ handler without putting the computer to sleep.
 
 ## Calls and microphone control
 
-The main panel’s **Microphone** dropdown changes the Mac’s default input without
+The **Settings → Call audio → Microphone** dropdown changes the Mac’s default input without
 selecting a different output device. You can switch back and forth at any
 time; the app does not choose for you or record audio.
 
@@ -96,6 +96,16 @@ This is an input-routing workaround, not a firmware sidetone-disable command.
 Google Meet and other apps may select their own microphone explicitly. To
 follow this selector, use the system default input in the calling app; otherwise
 change the microphone in the app’s own audio settings.
+
+**If you hear yourself or surrounding noise in Google Meet:** open Meet’s own
+**Settings → Audio → Microphone** and select **MacBook Pro Microphone**, keeping
+WH-1000XM3 selected as the speaker. This resolved the reported problem on the
+test Mac. Changing macOS's default alone does not override Meet’s explicit
+headset-microphone selection.
+
+No working XM3 firmware sidetone-disable command has been established. See the
+[read-only capability investigation](docs/xm3-sidetone.md) for the device’s
+responses and the limits of this conclusion.
 
 ## Build from source
 
@@ -112,13 +122,43 @@ open 'build/Sony Menu.app'
 The build is created at `build/Sony Menu.app` and signed locally. Quit any
 running instance before launching a rebuilt version.
 
+To install the built app in Applications, run `zsh install.sh`. A native icon
+is included, so Sony Menu can be found in Finder, Applications and Spotlight.
+
+### Stable local signing and Bluetooth permission
+
+Ad-hoc signatures change identity when the executable changes, so macOS may
+request Bluetooth permission again after a rebuild. A stable local signing
+certificate keeps the app's designated identity consistent across builds.
+
+For a local development installation, an explicit one-time setup is available:
+
+```sh
+zsh Tools/create-local-signing-identity.sh
+zsh build.sh
+zsh install.sh
+open '/Applications/Sony Menu.app'
+```
+
+The setup creates a self-signed Sony Menu identity in the user's keychain and
+adds user-level trust scoped to code signing. It does not change system-wide
+or TLS trust. The private key remains in the keychain; temporary key files are
+removed. It reuses that identity on future runs. macOS may ask for Keychain
+approval during setup and one Bluetooth approval when migrating from the old
+ad-hoc identity. Keep launching the installed app from the same path.
+
+This is **local signing**, not Apple Developer ID signing or notarization.
+Public download builds remain ad-hoc signed. If you have your own Apple-issued
+identity, set `SONY_MENU_SIGNING_IDENTITY` to its identity name or fingerprint.
+Set `SONY_MENU_SIGNING_IDENTITY=-` to explicitly build ad-hoc (as release CI does).
+
 ## Tests and validation
 
 ```sh
 zsh test.sh
 ```
 
-**56 automated tests** cover framing and stream recovery, Bluetooth command
+**58 automated tests** cover framing and stream recovery, Bluetooth command
 queues, retries and errors, preferences, appearance, volume synchronization,
 sleep/wake intent, microphone routing and readback, lifecycle cleanup, idle
 behavior, and native panel rendering.

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 import IOBluetooth
+import CoreBluetooth
 
 @main
 @MainActor
@@ -21,8 +22,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
     private var store: HeadphoneStore!
     private var subscriptions = Set<AnyCancellable>()
+    private var initialBluetoothAuthorization: Int = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        initialBluetoothAuthorization = CBManager.authorization.rawValue
         // A normal click on the installed app reuses this one instance.
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "local.sonymenu.app")
             .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
@@ -112,8 +115,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             result["noiseMode"] = store.state.noiseMode.map { String(describing: $0) }
             result["ambientLevel"] = store.state.ambientLevel
             result["volume"] = store.state.volume
+            result["bluetoothAuthorization"] = CBManager.authorization.rawValue
+            result["initialBluetoothAuthorization"] = initialBluetoothAuthorization
             result["microphoneDevices"] = store.microphones.devices.map { ["id": $0.id, "name": $0.name] as [String: Any] }
             result["selectedMicrophoneID"] = store.microphones.selectedID
+            if CommandLine.arguments.contains("--inspect-sidetone"), store.ready {
+                store.client.inspectCallCapabilities()
+                try? await Task.sleep(for: .seconds(11))
+                result["sidetoneProbe"] = "Read-only V1 supported-function and general-setting inquiries; no setting writes"
+            }
             if CommandLine.arguments.contains("--verify-microphone") {
                 let original = MacMicrophone.read()
                 if original.devices.contains(where: { $0.id == original.selectedID }),
