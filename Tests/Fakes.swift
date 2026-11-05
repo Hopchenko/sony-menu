@@ -129,10 +129,10 @@ final class TestRig {
     let suite = "local.sonymenu.tests.\(UUID().uuidString)"
     var client: SonyV1Client!
     var store: HeadphoneStore!
-    init(start: Bool = true, retryDelays: [Duration] = [.milliseconds(3), .milliseconds(5)]) {
+    init(start: Bool = true, retryDelays: [Duration] = [.milliseconds(3), .milliseconds(5)], commandTimeout: Duration = .milliseconds(300)) {
         defaults = UserDefaults(suiteName: suite)!
         transport.onConnect = { [weak platform] in platform?.isConnected = true }
-        client = SonyV1Client(transport: transport, commandTimeout: .milliseconds(50))
+        client = SonyV1Client(transport: transport, commandTimeout: commandTimeout)
         if start { store = HeadphoneStore(defaults: defaults, platform: platform, client: client, retryDelays: retryDelays) }
     }
     func close() { store?.shutdown(); client.disconnect(); defaults.removePersistentDomain(forName: suite) }

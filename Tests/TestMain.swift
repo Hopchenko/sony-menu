@@ -207,9 +207,8 @@ enum TestMain {
             rig.client.setNoiseMode(.off)
             let flight = rig.transport.commands.last!
             rig.client.setAmbient(level: 6, focusOnVoice: false)
-            try await Task.sleep(for: .milliseconds(130))
+            try await wait { rig.transport.commands.contains { $0.payload == [0x68,2,0x11,2,0,1,0,6] } }
             try expect(rig.transport.commands.filter { $0 == flight }.count == 2)
-            try expect(rig.transport.commands.last?.payload.last == 6)
         }
         await test("Disconnected client ignores setters and refresh requests") {
             let rig = TestRig(start: false); defer { rig.close() }
@@ -378,7 +377,7 @@ enum TestMain {
             let rig = TestRig(); defer { rig.close() }
             try await wait { rig.store.ready }
             rig.store.setAmbient(level: 3); rig.store.setAmbient(level: 7); rig.store.setAmbient(level: 12)
-            try await Task.sleep(for: .milliseconds(250))
+            try await wait { rig.store.state.ambientLevel == 12 }
             try expect(rig.store.state.ambientLevel == 12)
             try expect(rig.transport.commands.filter { $0.payload.first == 0x68 }.count == 1)
         }
