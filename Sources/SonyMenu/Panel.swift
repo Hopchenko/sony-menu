@@ -8,8 +8,12 @@ struct HeadphonePanel: View {
     @State private var editingVolume = false
     @State private var editingAmbient = false
 
-    private let panelColor = Color(nsColor: .windowBackgroundColor)
-    private let cardColor = Color.primary.opacity(0.035)
+    @Environment(\.colorScheme) private var systemScheme
+    private var scheme: ColorScheme { store.appearance == .device ? systemScheme : store.appearance == .dark ? .dark : .light }
+    private var palette: PanelPalette { PanelPalette(dark: scheme == .dark) }
+    private var panelColor: Color { Color(nsColor: palette.background) }
+    private var cardColor: Color { Color(nsColor: palette.card) }
+    private var secondaryColor: Color { Color(nsColor: palette.secondary) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,7 +21,7 @@ struct HeadphonePanel: View {
             if store.settingsShown { settings }
             else { controls }
             if let notice = store.notice {
-                Text(notice).font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(notice).font(.system(size: 12)).foregroundStyle(secondaryColor)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
             }
@@ -26,6 +30,8 @@ struct HeadphonePanel: View {
         .padding(16)
         .frame(width: 360)
         .background(panelColor)
+        .foregroundStyle(Color(nsColor: palette.text))
+        .environment(\.colorScheme, scheme)
         .fixedSize(horizontal: false, vertical: true)
         .onAppear { syncSliders() }
         .onChange(of: store.outputVolume) { if !editingVolume { volume = store.outputVolume ?? 0 } }
@@ -40,9 +46,9 @@ struct HeadphonePanel: View {
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text("WH-1000XM3").font(.system(size: 15, weight: .semibold))
-                Text(store.connectionLabel).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(store.connectionLabel).font(.system(size: 12)).foregroundStyle(secondaryColor)
                 if let codec = store.state.codecName, store.ready {
-                    Text(codec).font(.system(size: 10)).foregroundStyle(.tertiary)
+                    Text("Codec: \(codec)").font(.system(size: 12)).foregroundStyle(secondaryColor)
                 }
             }
             Spacer(minLength: 0)
@@ -51,6 +57,9 @@ struct HeadphonePanel: View {
                     Image(systemName: battery > 80 ? "battery.100percent" : battery > 30 ? "battery.50percent" : "battery.25percent")
                     Text("\(battery)%").monospacedDigit()
                 }.font(.system(size: 12))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Headphone battery")
+                .accessibilityValue("\(battery) percent")
             }
         }.padding(.bottom, 14)
     }
@@ -64,15 +73,17 @@ struct HeadphonePanel: View {
                     modeButton(.ambient, label: "Ambient Sound", symbol: "wind")
                     modeButton(.off, label: "Off", symbol: "circle.slash")
                 }.disabled(!store.ready || store.state.noiseMode == nil)
-                Text(noiseDescription).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(noiseDescription).font(.system(size: 12)).foregroundStyle(secondaryColor)
                 if store.state.noiseMode == .ambient {
                     Divider()
                     HStack { Text("Ambient sound level"); Spacer(); Text("\(Int(ambient))").monospacedDigit() }
                         .font(.system(size: 12))
-                    Slider(value: $ambient, in: 1...20, step: 1, onEditingChanged: { editing in
+                    Slider(value: Binding(get: { ambient }, set: {
+                        ambient = $0
+                        store.setAmbient(level: Int($0))
+                    }), in: 1...20, step: 1, onEditingChanged: { editing in
                         editingAmbient = editing
-                        if !editing { store.setAmbient(level: Int(ambient)) }
-                    }).accessibilityLabel("Ambient sound level").disabled(!store.ready)
+                    }).accessibilityLabel("Ambient sound level").accessibilityValue("\(Int(ambient)) of 20").disabled(!store.ready)
                     Toggle("Focus on voice", isOn: Binding(get: { store.state.focusOnVoice }, set: { store.setAmbient(voice: $0) }))
                         .toggleStyle(.switch).controlSize(.mini).font(.system(size: 12)).disabled(!store.ready)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -87,15 +98,15 @@ struct HeadphonePanel: View {
                         .monospacedDigit()
                 }.font(.system(size: 13))
                 HStack(spacing: 10) {
-                    Image(systemName: "speaker.wave.1").font(.system(size: 13))
+                    Image(systemName: "speaker.wave.1").font(.system(size: 13)).accessibilityHidden(true)
                     Slider(value: Binding(get: { volume }, set: { value in
                         volume = value
                         store.setVolume(value)
                     }), in: 0...1, onEditingChanged: { editing in
                         editingVolume = editing
                         if !editing { volume = store.outputVolume ?? volume }
-                    }).accessibilityLabel("Headphone volume").disabled(!store.bluetoothConnected || store.outputVolume == nil)
-                    Image(systemName: "speaker.wave.3").font(.system(size: 13))
+                    }).accessibilityLabel("Headphone volume").accessibilityValue("\(Int((volume * 100).rounded())) percent").disabled(!store.bluetoothConnected || store.outputVolume == nil)
+                    Image(systemName: "speaker.wave.3").font(.system(size: 13)).accessibilityHidden(true)
                 }
             }.padding(13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
 
@@ -122,15 +133,15 @@ struct HeadphonePanel: View {
     private func modeButton(_ mode: SonyV1NoiseMode, label: String, symbol: String) -> some View {
         let selected = store.state.noiseMode == mode
         return Button { store.setMode(mode) } label: {
-            VStack(spacing: 9) {
-                Image(systemName: symbol).font(.system(size: 21, weight: .regular)).frame(height: 25)
-                Text(label).font(.system(size: 10.5)).lineLimit(1).minimumScaleFactor(0.9)
+            VStack(spacing: 5) {
+                Image(systemName: selected ? "checkmark.circle.fill" : symbol).font(.system(size: 21, weight: .regular)).frame(height: 25)
+                Text(label).font(.system(size: 12)).multilineTextAlignment(.center).lineLimit(2).frame(height: 30)
             }
             .frame(maxWidth: .infinity).frame(height: 74)
-            .foregroundStyle(selected ? Color.accentColor : Color.primary)
-            .background(selected ? Color.accentColor.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+            .foregroundStyle(Color(nsColor: palette.text))
+            .background(selected ? Color(nsColor: palette.selected) : .clear, in: RoundedRectangle(cornerRadius: 10))
             .contentShape(RoundedRectangle(cornerRadius: 10))
-        }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+        }.buttonStyle(.plain).accessibilityLabel(label).accessibilityValue(selected ? "Selected" : "Not selected").accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var microphoneSettings: some View {
@@ -143,10 +154,10 @@ struct HeadphonePanel: View {
                     ForEach(store.microphones.devices) { device in Text(device.name).tag(device.id) }
                 }.labelsHidden().disabled(store.microphones.devices.isEmpty)
                 Text("Changes Mac input. Meet can use its own selection.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .font(.system(size: 12)).foregroundStyle(secondaryColor)
                 if store.microphones.devices.first(where: { $0.id == store.microphones.selectedID })?.name == "WH-1000XM3" {
                     Text("The headphone mic may enable call sidetone.")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .font(.system(size: 12)).foregroundStyle(secondaryColor)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
                 .padding(13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
@@ -154,36 +165,39 @@ struct HeadphonePanel: View {
     }
 
     private var settings: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Settings").font(.system(size: 15, weight: .semibold))
-            sectionLabel("CONNECTION")
+            Text("Settings").font(.system(size: 15, weight: .semibold)).accessibilityAddTraits(.isHeader)
+            appearanceSetting
+            sectionLabel("Connection", symbol: "bolt.horizontal.circle")
             VStack(spacing: 0) {
                 settingToggle("Disconnect when Mac sleeps", detail: "Release WH-1000XM3 when this Mac goes to sleep.", binding: $store.disconnectOnSleep)
                 Divider()
                 settingToggle("Reconnect after unlock", detail: "Only if disconnected by Sony Menu.", binding: $store.reconnectAfterUnlock)
                     .disabled(!store.disconnectOnSleep)
             }.padding(.horizontal, 13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
-            Text(sleepSummary).font(.system(size: 12)).foregroundStyle(.secondary)
+            Text(sleepSummary).font(.system(size: 12)).foregroundStyle(secondaryColor)
                 .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 3)
-            sectionLabel("CALL AUDIO").padding(.top, 3)
+            sectionLabel("Call audio", symbol: "mic").padding(.top, 3)
             microphoneSettings
-            sectionLabel("GENERAL").padding(.top, 3)
+            sectionLabel("General", symbol: "gearshape").padding(.top, 3)
             VStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Appearance").font(.system(size: 12))
-                    Picker("Appearance", selection: $store.appearance) {
-                        ForEach(AppAppearance.allCases) { mode in Text(mode.title).tag(mode) }
-                    }.pickerStyle(.segmented).labelsHidden()
-                    Text("Device follows your Mac’s appearance.")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                }.padding(.vertical, 11).frame(maxWidth: .infinity, alignment: .leading)
-                Divider()
                 settingToggle("Open at login", binding: Binding(get: { store.launchAtLogin }, set: { store.setLaunchAtLogin($0) }))
                 Divider()
                 settingToggle("Show battery in menu bar", binding: $store.showBattery)
             }.padding(.horizontal, 13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
-            Text("Sony Menu 1.1 · Unofficial Sony controller").font(.system(size: 10)).foregroundStyle(.tertiary).padding(.vertical, 4)
+            Text("Sony Menu · Unofficial Sony controller").font(.system(size: 12)).foregroundStyle(secondaryColor).padding(.vertical, 4)
         }.padding(.bottom, 12)
+        }.frame(height: min(500, max(280, (NSScreen.main?.visibleFrame.height ?? 900) - 200)))
+    }
+
+    private var appearanceSetting: some View {
+        HStack {
+            Label("Appearance", systemImage: "desktopcomputer").font(.system(size: 12))
+            Spacer(minLength: 8)
+            AppearancePicker(selection: $store.appearance).frame(width: 148, height: 28)
+        }.padding(.horizontal, 13).padding(.vertical, 8)
+            .background(cardColor, in: RoundedRectangle(cornerRadius: 13))
     }
 
     private var sleepSummary: String {
@@ -193,17 +207,19 @@ struct HeadphonePanel: View {
             : "Disconnect on sleep. Reconnect manually when you return."
     }
 
-    private func sectionLabel(_ title: String) -> some View {
-        Text(title).font(.system(size: 10.5, weight: .medium)).foregroundStyle(.secondary).padding(.horizontal, 3)
+    private func sectionLabel(_ title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol).font(.system(size: 12, weight: .medium)).foregroundStyle(secondaryColor).padding(.horizontal, 3)
     }
 
     private func settingToggle(_ title: String, detail: String? = nil, binding: Binding<Bool>) -> some View {
         Toggle(isOn: binding) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 12))
-                if let detail { Text(detail).font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                if let detail { Text(detail).font(.system(size: 12)).foregroundStyle(secondaryColor).fixedSize(horizontal: false, vertical: true) }
             }.padding(.vertical, 11).frame(maxWidth: .infinity, alignment: .leading)
         }.toggleStyle(.switch).controlSize(.mini)
+            .accessibilityLabel(title)
+            .accessibilityHint(detail ?? "")
     }
 
     private var footer: some View {
@@ -221,8 +237,8 @@ struct HeadphonePanel: View {
                     Divider()
                     Button("Quit Sony Menu") { NSApplication.shared.terminate(nil) }.keyboardShortcut("q")
                 } label: { Image(systemName: "ellipsis.circle") }
-                .menuStyle(.borderlessButton).fixedSize().help("More options")
-            }.font(.system(size: 12)).foregroundStyle(.secondary)
+                .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("More options").help("More options")
+            }.font(.system(size: 12)).foregroundStyle(secondaryColor)
         }
     }
 

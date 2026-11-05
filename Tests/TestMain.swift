@@ -33,6 +33,7 @@ enum TestMain {
         await protocolTests()
         await storeTests()
         await interfaceTests()
+        await accessibilityTests()
         print("\n\(passed) tests passed; \(failed) failed.")
         exit(failed == 0 ? 0 : 1)
     }

@@ -10,7 +10,7 @@ over Bluetooth—no phone app, account, server, or package dependencies.
 <tr><th>Headphone controls</th><th>Settings</th></tr>
 <tr>
 <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-controls.png"><img src="docs/screenshots/light-controls.png" alt="Sony Menu with live battery, noise controls, and volume" width="360"></picture></td>
-<td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-settings.png"><img src="docs/screenshots/light-settings.png" alt="Settings with sleep disconnect and Device, Light, Dark appearance" width="360"></picture></td>
+<td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-settings.png"><img src="docs/screenshots/light-settings.png" alt="Settings with sleep disconnect and Auto, Light, Dark appearance" width="360"></picture></td>
 </tr>
 </table>
 
@@ -29,7 +29,8 @@ Screenshots are rendered from the native app connected to a WH-1000XM3.
   microphones whenever you want, with live updates when macOS routing changes.
 - **Disconnect on sleep:** release the headphones when the Mac sleeps, with
   optional reconnection after unlock. Manual reconnection is the default.
-- **Appearance:** Device, Light, or Dark, saved between launches.
+- **Appearance:** compact Auto / sun / moon control. Auto follows your Mac; Light and Dark override it immediately and persist between launches.
+- **Readability:** larger helper text, section icons, named controls, a visible selected-mode checkmark, and scrollable Settings.
 - **Menu bar preferences:** battery percentage and optional launch at login.
 - **Low background activity:** Bluetooth and volume notifications instead of
   repeating polling timers; bounded retries, cancelled work on sleep, and no
@@ -158,7 +159,7 @@ Set `SONY_MENU_SIGNING_IDENTITY=-` to explicitly build ad-hoc (as release CI doe
 zsh test.sh
 ```
 
-**58 automated tests** cover framing and stream recovery, Bluetooth command
+**61 automated tests** cover framing and stream recovery, Bluetooth command
 queues, retries and errors, preferences, appearance, volume synchronization,
 sleep/wake intent, microphone routing and readback, lifecycle cleanup, idle
 behavior, and native panel rendering.

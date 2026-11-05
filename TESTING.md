@@ -6,10 +6,10 @@
 zsh test.sh
 ```
 
-The suite currently contains 58 named tests. It compiles the production source
+The suite currently contains 61 named tests. It compiles the production source
 with LLVM instrumentation, runs against isolated preferences and simulated
 Bluetooth/macOS services, and renders native SwiftUI panels in Light, Dark,
-and Device appearance. It never changes your real headphone or login settings.
+and Auto appearance. It never changes your real headphone or login settings.
 
 Outputs:
 
@@ -25,14 +25,15 @@ where the user keychain's trust settings are available.
 
 | Area | Automated checks |
 | --- | --- |
-| Appearance and preferences | Default/fallback values, persistence, native theme mapping, an existing panel updating its appearance |
+| Appearance and preferences | Default/fallback values, persistence, native theme mapping, an open popover updating native appearance and rendered pixels, clearing overrides in Auto mode |
 | Protocol framing | Known wire fixture, every-byte payload, every split boundary, combined frames, checksum/length validation, illegal escapes, bounded parser and recovery |
 | Bluetooth client | Handshake, unsupported versions, replies/notifications, ACK sequencing, retries, timeouts, write failure, command coalescing, readback, cancellation |
 | Controls | Noise modes, ambient level and voice focus, value clamping, debounce, latest-command behavior, macOS volume reads/writes and external change notifications |
 | Microphone | Current input without auto-switching, selection in either direction, external routing updates, vanished devices, write/readback failures, shutdown cleanup |
 | Sleep and connection | Manual disconnect intent, optional reconnect, repeated background wake, unlock-before-wake, disabled sleep disconnect, pairing errors, bounded retries |
 | Lifecycle and efficiency | No idle polling or keepalive requests, cancelled work on sleep, subscriptions removed on shutdown, diagnostics disabled normally |
-| Interface | Light/Dark/Device panels, connected/disconnected/connecting/error/ambient layouts and size constraints |
+| Interface | Light/Dark/Auto panels, connected/disconnected/connecting/error/ambient layouts, scrollable Settings and size constraints |
+| Accessibility | Primary and secondary app text at least 4.5:1 on all custom surfaces in both themes; native segment descriptions/tooltips, selection bindings and keyboard-focus acceptance |
 
 This is broad regression coverage, not 100% line coverage. Hardware-specific
 IOBluetooth and Core Audio code is mostly exercised by the live checks below,
@@ -73,9 +74,39 @@ runs during normal operation. See [the XM3 investigation](docs/xm3-sidetone.md).
   then reopen/unlock. Repeat with optional reconnection on and off.
 - Change volume with the headphone gestures and macOS controls while the panel
   is open; check that the slider follows and no feedback loop occurs.
-- Toggle Device appearance and change macOS appearance while the panel is open.
+- Toggle Auto appearance and change macOS appearance while the panel is open.
 - Verify Open at login after a real logout/login.
 - Check the first-launch Bluetooth prompt and downloaded-app approval flow on
   another Mac.
 
 These OS and physical-device scenarios cannot be fully validated by fakes.
+
+## Accessibility validation (1.2)
+
+The automated contrast check uses sRGB relative luminance and tests both text
+colors on the panel, card and selected-mode surfaces. Native macOS controls
+keep their system styling; this calculation does not measure their internal
+colors, disabled labels, headphone photo or the full composited screen.
+
+Live checks of the installed interface confirmed named theme radio buttons,
+switch descriptions, microphone picker, percentage volume value and More menu.
+Light and Dark changed while the panel remained open. Arrow keys and Space
+activated the theme segments, with a visible native focus ring. Tab traversal
+across all controls and spoken VoiceOver output still need a manual check.
+
+For an Inspector-friendly window containing the same production panel, quit
+Sony Menu and run:
+
+```sh
+open '/Applications/Sony Menu.app' --args --accessibility-audit
+```
+
+Quit and relaunch normally to return to menu-bar-only operation. The audit flag
+adds no observers, polling or background work to normal operation.
+
+Apple Accessibility Inspector was invoked with Element Description, Hit Region,
+Contrast, Element Detection, Parent/Child and Action enabled. It returned an
+empty report even when pointed at a separate negative-control app with an
+intentionally unnamed button. That result is **inconclusive**, not a successful
+full audit. The report is not used as evidence that the app is fully accessible.
+The automated checks and live inspection above are the validated results.

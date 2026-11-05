@@ -14,7 +14,7 @@ firmware 4.5.2.
 - Live Core Audio volume-change notifications reached the panel within a
   250 ms verification window after a write outside the app's state store.
 - An app volume write was read back from macOS; the original volume was restored.
-- All 58 simulated-device, preferences, lifecycle, protocol and UI tests passed.
+- All 61 simulated-device, preferences, lifecycle, protocol and UI tests passed.
 - Light, Dark and Device appearances were rendered; live appearance changes
   on an existing panel and preference persistence were tested.
 - The updated event-driven build passed all 13 live diagnostic assertions,
@@ -55,3 +55,17 @@ suspended. See README.md for the behavior and limitations.
 
 Live diagnostic output is generated at `/private/tmp/sony-menu-diagnostics.json`;
 that temporary file is overwritten by the next diagnostic run.
+
+Version 1.2 fixes live popover appearance overrides and adds the compact native
+Auto/sun/moon control. An open-popover regression checks the rendered background
+pixels as well as AppKit appearance, including clearing all overrides for Auto.
+Primary and secondary custom text colors pass 4.5:1 contrast on every custom
+surface in Light and Dark. Helper text is at least 12 pt, noise-mode labels wrap
+instead of shrinking, and selection has a checkmark in addition to color.
+
+Live accessibility inspection confirmed theme names/selection, volume percentage,
+microphone and switch descriptions. Theme arrow/Space navigation and visible
+focus were checked on the installed app. Settings scroll within the available
+screen height. Apple's Inspector audit was inconclusive after an empty result
+also occurred on a deliberately unnamed-button fixture; no full-audit pass is
+claimed. See TESTING.md for scope and remaining manual checks.

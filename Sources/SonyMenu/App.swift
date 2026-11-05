@@ -10,7 +10,7 @@ enum SonyMenuMain {
     static let delegate = AppDelegate()
     static func main() {
         let app = NSApplication.shared
-        app.setActivationPolicy(.accessory)
+        app.setActivationPolicy(CommandLine.arguments.contains("--accessibility-audit") ? .regular : .accessory)
         app.delegate = delegate
         app.run()
     }
@@ -20,6 +20,7 @@ enum SonyMenuMain {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var item: NSStatusItem!
     private let popover = NSPopover()
+    private var auditWindow: NSWindow?
     private var store: HeadphoneStore!
     private var subscriptions = Set<AnyCancellable>()
     private var initialBluetoothAuthorization: Int = 0
@@ -52,17 +53,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store = HeadphoneStore()
         let host = NSHostingController(rootView: HeadphonePanel(store: store))
         host.sizingOptions = [.preferredContentSize]
-        popover.contentViewController = host
-        popover.behavior = .transient
+        if CommandLine.arguments.contains("--accessibility-audit") {
+            let window = NSWindow(contentViewController: host)
+            window.title = "Sony Menu — Accessibility Audit"
+            window.styleMask = [.titled, .closable]
+            window.center()
+            auditWindow = window
+        } else {
+            popover.contentViewController = host
+        }
+        popover.behavior = CommandLine.arguments.contains("--accessibility-audit") ? .applicationDefined : .transient
         popover.animates = true
-        store.$appearance.removeDuplicates().sink { mode in
-            NSApp.appearance = mode.native
+        store.$appearance.removeDuplicates().sink { [weak self] mode in
+            guard let self else { return }
+            PanelAppearance.apply(mode, to: self.popover)
+            self.auditWindow?.appearance = mode.native
+            self.auditWindow?.contentView?.appearance = mode.native
         }.store(in: &subscriptions)
         Publishers.CombineLatest3(store.$state, store.$showBattery, store.$connection)
             .receive(on: RunLoop.main).sink { [weak self] state, show, connection in
                 self?.item.button?.title = show && connection == .ready ? state.batteryPercent.map { " \($0)%" } ?? "" : ""
             }.store(in: &subscriptions)
-        if CommandLine.arguments.contains("--show") {
+        if CommandLine.arguments.contains("--show") || CommandLine.arguments.contains("--accessibility-audit") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.showPopover() }
         }
         if CommandLine.arguments.contains("--diagnose") { runDiagnostics() }
@@ -92,6 +104,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showPopover() {
         guard let button = item.button, store != nil else { return }
         store.refresh()
+        if let auditWindow {
+            auditWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         NSApp.activate(ignoringOtherApps: true)
         popover.contentViewController?.view.window?.makeKey()
@@ -209,7 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         defer { store.appearance = previousAppearance; store.settingsShown = previousSettings }
         store.appearance = appearance
         store.settingsShown = settings
-        let host = NSHostingView(rootView: HeadphonePanel(store: store).environment(\.colorScheme, appearance == .dark ? .dark : .light))
+        let host = NSHostingView(rootView: HeadphonePanel(store: store))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 360, height: 640), styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = appearance.native
         window.contentView = host
