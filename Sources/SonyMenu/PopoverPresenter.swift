@@ -11,6 +11,7 @@ final class PopoverPresenter {
     private var localMonitor: Any?
     private var globalMonitor: Any?
     private var deactivateObserver: NSObjectProtocol?
+    private weak var statusButton: NSView?
     var isShown: Bool { panelWindow?.isVisible == true }
 
     init(popover: NSPopover) { self.popover = popover }
@@ -42,6 +43,7 @@ final class PopoverPresenter {
         view.layer?.masksToBounds = true
         panel.contentViewController = controller
         panelWindow = panel
+        statusButton = source
         anchorRect = rect
         let size = preferredSize(controller)
         let x = min(max(rect.midX - size.width / 2, visible.minX + 6), visible.maxX - size.width - 6)
@@ -51,20 +53,41 @@ final class PopoverPresenter {
         }
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
             MainActor.assumeIsolated {
-                // The status button handles its own toggle, avoiding close/reopen.
-                if let self, event.window !== self.panelWindow, event.window !== sourceWindow,
-                   (event.window?.level.rawValue ?? 0) < NSWindow.Level.popUpMenu.rawValue { self.close() }
+                self?.dismissForOutsideClick(at: NSEvent.mouseLocation, window: event.window)
             }
             return event
         }
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
-            MainActor.assumeIsolated { self?.close() }
+            MainActor.assumeIsolated { self?.dismissForOutsideClick(at: NSEvent.mouseLocation) }
         }
         deactivateObserver = NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: NSApp, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.close() }
+            MainActor.assumeIsolated {
+                self?.dismissForDeactivation(at: NSEvent.mouseLocation, pressedButtons: NSEvent.pressedMouseButtons)
+            }
         }
         panel.makeKeyAndOrderFront(nil)
         return isShown
+    }
+
+    private func isOverStatusButton(_ point: NSPoint) -> Bool {
+        guard let statusButton, let window = statusButton.window else { return false }
+        // Use the live button position even though the panel itself stays fixed.
+        return window.convertToScreen(statusButton.convert(statusButton.bounds, to: nil)).contains(point)
+    }
+
+    func dismissForOutsideClick(at point: NSPoint, window: NSWindow? = nil) {
+        // macOS can deliver a menu bar click through the global monitor or a
+        // different status window. Let its mouse-up action perform the toggle.
+        guard !isOverStatusButton(point), window !== panelWindow,
+              !(panelWindow?.frame.contains(point) ?? false),
+              (window?.level.rawValue ?? 0) < NSWindow.Level.popUpMenu.rawValue else { return }
+        close()
+    }
+
+    func dismissForDeactivation(at point: NSPoint, pressedButtons: Int) {
+        // Deactivation can precede the status button's mouse-up action too.
+        guard pressedButtons == 0 || !isOverStatusButton(point) else { return }
+        close()
     }
 
     private func preferredSize(_ controller: NSViewController) -> NSSize {
@@ -91,6 +114,7 @@ final class PopoverPresenter {
         let previous = panelWindow
         panelWindow = nil
         anchorRect = nil
+        statusButton = nil
         previous?.orderOut(nil)
         previous?.contentViewController = nil
         previous?.close()

@@ -56,6 +56,35 @@ extension TestMain {
             NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: NSApp)
             try expect(!presenter.isShown && presenter.panelWindow == nil, "Switching apps did not dismiss the panel")
         }
+        await test("Status clicks survive outside-dismiss and deactivation until mouse-up") {
+            let screen = NSScreen.screens[0].visibleFrame
+            let sourceWindow = NSWindow(contentRect: NSRect(x: screen.midX, y: screen.maxY - 30, width: 60, height: 24), styleMask: [.borderless], backing: .buffered, defer: false)
+            sourceWindow.isReleasedWhenClosed = false
+            let button = NSView(frame: NSRect(x: 10, y: 0, width: 30, height: 24))
+            sourceWindow.contentView!.addSubview(button)
+            sourceWindow.orderFront(nil)
+            let popover = NSPopover()
+            popover.contentViewController = NSHostingController(rootView: Text("Toggle").frame(width: 180, height: 80))
+            let presenter = PopoverPresenter(popover: popover)
+            defer { presenter.close(); sourceWindow.close() }
+            try expect(presenter.show(relativeTo: button))
+            // The menu bar moves, but the open panel must stay put.
+            let original = presenter.panelWindow!.frame
+            sourceWindow.setFrameOrigin(NSPoint(x: screen.midX - 150, y: screen.maxY - 30))
+            let rect = sourceWindow.convertToScreen(button.convert(button.bounds, to: nil))
+            let point = NSPoint(x: rect.midX, y: rect.midY)
+            presenter.dismissForOutsideClick(at: point) // Global monitor has no event window.
+            presenter.dismissForDeactivation(at: point, pressedButtons: 1)
+            try expect(presenter.isShown && presenter.panelWindow!.frame == original, "Mouse-down dismissed the panel before its toggle action")
+            presenter.close() // The existing status button mouse-up action.
+            try expect(!presenter.isShown)
+            try expect(presenter.show(relativeTo: button), "The next click failed to reopen")
+            presenter.dismissForOutsideClick(at: NSPoint(x: screen.minX + 1, y: screen.minY + 1))
+            try expect(!presenter.isShown, "Clicking elsewhere stopped dismissing the panel")
+            try expect(presenter.show(relativeTo: button))
+            presenter.dismissForDeactivation(at: point, pressedButtons: 0)
+            try expect(!presenter.isShown, "Keyboard app switching should still dismiss")
+        }
         await test("Popover anchor rejects unattached views and closes idempotently") {
             let presenter = PopoverPresenter(popover: NSPopover())
             try expect(!presenter.show(relativeTo: NSView()))

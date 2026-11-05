@@ -184,7 +184,7 @@ Set `SONY_MENU_SIGNING_IDENTITY=-` to explicitly build ad-hoc (as release CI doe
 zsh test.sh
 ```
 
-**87 automated tests** cover framing and stream recovery, Bluetooth command
+**88 automated tests** cover framing and stream recovery, Bluetooth command
 queues, retries and errors, preferences, appearance, volume synchronization,
 sleep/wake intent, microphone routing and readback, lifecycle cleanup, idle
 behavior, and native panel rendering.
