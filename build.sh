@@ -1,7 +1,8 @@
 #!/bin/zsh
 set -euo pipefail
 cd "${0:A:h}"
-app_path="$PWD/build/Sony Headphone Control.app"
+python3 Tools/retire-development-apps.py
+app_path="$PWD/build/Applications.noindex/Sony Headphone Control.app"
 mkdir -p "$app_path/Contents/MacOS" "$app_path/Contents/Resources"
 swiftc -swift-version 5 -parse-as-library -O -module-cache-path /private/tmp/sony-menu-module-cache \
   -target arm64-apple-macosx14.0 Sources/SonyMenu/*.swift Sources/SonyMenu/Protocol/*.swift \

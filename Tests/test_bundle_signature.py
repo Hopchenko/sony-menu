@@ -15,7 +15,7 @@ class BundleSignatureTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix='sony-menu-signature-check-')
         self.addCleanup(self.temporary.cleanup)
         self.app = Path(self.temporary.name) / 'Sony Headphone Control.app'
-        subprocess.run(['/usr/bin/ditto', str(ROOT / 'build/Sony Headphone Control.app'), str(self.app)], check=True)
+        subprocess.run(['/usr/bin/ditto', str(ROOT / 'build/Applications.noindex/Sony Headphone Control.app'), str(self.app)], check=True)
         subprocess.run(['/usr/bin/codesign', '--force', '--sign', '-', '--timestamp=none', str(self.app)], capture_output=True, check=True)
 
     def custom_icon(self):

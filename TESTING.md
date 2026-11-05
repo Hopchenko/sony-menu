@@ -48,7 +48,7 @@ noise mode and volume, disconnect the headphones, then restore the original
 settings and reconnect. They do not put the Mac to sleep.
 
 ```sh
-open 'build/Sony Headphone Control.app' --args --diagnose --verify-idle --verify-volume-sync --verify-control --verify-sleep
+open '/Applications/Sony Headphone Control.app' --args --diagnose --verify-idle --verify-volume-sync --verify-control --verify-sleep
 ```
 
 After the diagnostic app exits, inspect `/private/tmp/sony-menu-diagnostics.json`.
@@ -161,3 +161,15 @@ restores the original choice and records Bluetooth authorization. Run
 `python3 Tests/verify_color_live.py` against that diagnostic output. A second
 plain diagnostic run verifies authorization on relaunch; pass its JSON as a
 second argument to the verifier. These checks do not change audio settings.
+
+## Launcher registration
+
+Build bundles live in `build/Applications.noindex/`; staging bundles should live
+in `build/release.noindex/`. Build startup relocates only obsolete generated
+bundles with this app's identifier and unregisters their previous paths.
+The installed app advertises Utilities classification and normal launcher
+visibility, then adopts accessory activation at runtime to remain menu-bar-only.
+Validation checks the bundle metadata; a live process check confirmed accessory
+policy 1. Spotlight and Launch Services each returned one installed copy after
+cleanup. The Apps grid could not be inspected because the native launcher UI
+failed to open through the computer-use tool.

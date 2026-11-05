@@ -7,11 +7,12 @@ import subprocess
 import sys
 from bundle_signature import verify_bundle_signature
 
-app = Path(sys.argv[1] if len(sys.argv) > 1 else "build/Sony Headphone Control.app")
+app = Path(sys.argv[1] if len(sys.argv) > 1 else "build/Applications.noindex/Sony Headphone Control.app")
 info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
 assert info["CFBundleIdentifier"] == "local.sonymenu.app"
 assert info["CFBundleDisplayName"] == "Sony Headphone Control"
-assert info["LSUIElement"] is True
+assert info.get("LSUIElement", False) is False
+assert info["LSApplicationCategoryType"] == "public.app-category.utilities"
 assert info.get("NSBluetoothAlwaysUsageDescription")
 executable = app / "Contents/MacOS" / info["CFBundleExecutable"]
 assert executable.is_file() and os.access(executable, os.X_OK)

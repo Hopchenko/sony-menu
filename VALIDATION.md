@@ -92,3 +92,10 @@ renamed the previous installation in place, keeping `local.sonymenu.app`, the
 existing signing identity, and preferences. The migrated app connected, kept
 Auto/Black color detection, retained enabled launch-at-login registration, and
 started with Bluetooth authorization already allowed (raw value 3).
+
+Version 1.3.1 relocates generated app copies into `.noindex` directories and
+unregisters their old paths. Spotlight and Launch Services both reported only
+`/Applications/Sony Headphone Control.app` after cleanup. The installed metadata
+is a normal Utilities app, while the running application reports accessory
+activation policy 1. This preserves menu-bar-only operation. The native launcher
+UI was unavailable for visual inspection; no global index reset was performed.

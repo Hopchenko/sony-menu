@@ -1,7 +1,7 @@
 #!/bin/zsh
 set -euo pipefail
 cd "${0:A:h}"
-app_source="$PWD/build/Sony Headphone Control.app"
+app_source="$PWD/build/Applications.noindex/Sony Headphone Control.app"
 app_destination='/Applications/Sony Headphone Control.app'
 if [[ ! -d "$app_source" ]]; then
   echo 'Build the app first: zsh build.sh' >&2

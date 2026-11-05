@@ -141,10 +141,11 @@ installation is needed.
 git clone https://github.com/Hopchenko/sony-menu.git
 cd sony-menu
 zsh build.sh
-open 'build/Sony Headphone Control.app'
+zsh install.sh
+open '/Applications/Sony Headphone Control.app'
 ```
 
-The build is created at `build/Sony Headphone Control.app` and signed locally. Quit any
+The build is created at `build/Applications.noindex/Sony Headphone Control.app` and signed locally. The `.noindex` directory keeps development copies out of Spotlight. Builds also retire this project’s older generated app copies; the installer registers the single copy in Applications. Quit any
 running instance before launching a rebuilt version.
 
 To install the built app in Applications, run `zsh install.sh`. A native icon

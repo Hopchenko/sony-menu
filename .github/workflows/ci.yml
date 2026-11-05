@@ -15,9 +15,9 @@ jobs:
         run: zsh build.sh
       - name: Verify app signature and metadata
         run: |
-          codesign --verify --deep --strict 'build/Sony Headphone Control.app'
-          plutil -lint 'build/Sony Headphone Control.app/Contents/Info.plist'
-          test -s 'build/Sony Headphone Control.app/Contents/Resources/AppIcon.icns'
+          codesign --verify --deep --strict 'build/Applications.noindex/Sony Headphone Control.app'
+          plutil -lint 'build/Applications.noindex/Sony Headphone Control.app/Contents/Info.plist'
+          test -s 'build/Applications.noindex/Sony Headphone Control.app/Contents/Resources/AppIcon.icns'
           python3 Tools/verify-app.py
       - name: Verify Finder icon metadata handling
         run: python3 -m unittest discover -s Tests -p 'test_bundle_signature.py'
@@ -32,7 +32,7 @@ jobs:
             build/coverage.txt
             build/test-previews/
       - name: Package Apple Silicon app
-        run: ditto -c -k --sequesterRsrc --keepParent 'build/Sony Headphone Control.app' build/Sony-Headphone-Control-macOS-arm64.zip
+        run: ditto -c -k --sequesterRsrc --keepParent 'build/Applications.noindex/Sony Headphone Control.app' build/Sony-Headphone-Control-macOS-arm64.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Sony-Headphone-Control-macOS-arm64
