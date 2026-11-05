@@ -6,7 +6,7 @@
 zsh test.sh
 ```
 
-The suite currently contains 61 named tests. It compiles the production source
+The suite currently contains 64 named tests. It compiles the production source
 with LLVM instrumentation, runs against isolated preferences and simulated
 Bluetooth/macOS services, and renders native SwiftUI panels in Light, Dark,
 and Auto appearance. It never changes your real headphone or login settings.
@@ -33,6 +33,7 @@ where the user keychain's trust settings are available.
 | Sleep and connection | Manual disconnect intent, optional reconnect, repeated background wake, unlock-before-wake, disabled sleep disconnect, pairing errors, bounded retries |
 | Lifecycle and efficiency | No idle polling or keepalive requests, cancelled work on sleep, subscriptions removed on shutdown, diagnostics disabled normally |
 | Interface | Light/Dark/Auto panels, connected/disconnected/connecting/error/ambient layouts, scrollable Settings and size constraints |
+| Panel positioning | Fixed screen-space anchor while the source window moves; repeated open, fresh reopen, anchor cleanup, unattached views and captured viewport height |
 | Accessibility | Primary and secondary app text at least 4.5:1 on all custom surfaces in both themes; native segment descriptions/tooltips, selection bindings and keyboard-focus acceptance |
 
 This is broad regression coverage, not 100% line coverage. Hardware-specific
@@ -110,3 +111,5 @@ empty report even when pointed at a separate negative-control app with an
 intentionally unnamed button. That result is **inconclusive**, not a successful
 full audit. The report is not used as evidence that the app is fully accessible.
 The automated checks and live inspection above are the validated results.
+
+The positioning regression moves the source window (to a second display when available), checks that the open popover and its independent anchor keep their frames, and verifies that a fresh opening uses the new position. Live scrolling confirmed the scrollbar remains in its own gutter outside the settings cards. Physical focus changes between displays remain a manual check.

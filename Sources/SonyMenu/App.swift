@@ -20,6 +20,7 @@ enum SonyMenuMain {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var item: NSStatusItem!
     private let popover = NSPopover()
+    private lazy var presenter = PopoverPresenter(popover: popover)
     private var auditWindow: NSWindow?
     private var store: HeadphoneStore!
     private var subscriptions = Set<AnyCancellable>()
@@ -109,7 +110,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.activate(ignoringOtherApps: true)
             return
         }
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        if !popover.isShown, let host = popover.contentViewController as? NSHostingController<HeadphonePanel> {
+            host.rootView = HeadphonePanel(store: store, settingsViewportHeight: PopoverPresenter.settingsHeight(on: button.window?.screen))
+        }
+        presenter.show(relativeTo: button)
         NSApp.activate(ignoringOtherApps: true)
         popover.contentViewController?.view.window?.makeKey()
     }
@@ -119,7 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    func applicationWillTerminate(_ notification: Notification) { store?.shutdown() }
+    func applicationWillTerminate(_ notification: Notification) { presenter.close(); store?.shutdown() }
 
     private func runDiagnostics() {
         if !store.bluetoothConnected && (CommandLine.arguments.contains("--verify-control") || CommandLine.arguments.contains("--verify-sleep")) {

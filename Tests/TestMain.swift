@@ -34,6 +34,7 @@ enum TestMain {
         await storeTests()
         await interfaceTests()
         await accessibilityTests()
+        await popoverTests()
         print("\n\(passed) tests passed; \(failed) failed.")
         exit(failed == 0 ? 0 : 1)
     }

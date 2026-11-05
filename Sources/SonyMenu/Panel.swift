@@ -3,6 +3,7 @@ import AppKit
 
 struct HeadphonePanel: View {
     @ObservedObject var store: HeadphoneStore
+    var settingsViewportHeight: CGFloat = 500
     @State private var volume = 0.0
     @State private var ambient = 10.0
     @State private var editingVolume = false
@@ -187,8 +188,8 @@ struct HeadphonePanel: View {
                 settingToggle("Show battery in menu bar", binding: $store.showBattery)
             }.padding(.horizontal, 13).background(cardColor, in: RoundedRectangle(cornerRadius: 13))
             Text("Sony Menu · Unofficial Sony controller").font(.system(size: 12)).foregroundStyle(secondaryColor).padding(.vertical, 4)
-        }.padding(.bottom, 12)
-        }.frame(height: min(500, max(280, (NSScreen.main?.visibleFrame.height ?? 900) - 200)))
+        }.padding(.bottom, 12).padding(.trailing, 14)
+        }.scrollIndicators(.visible).frame(height: settingsViewportHeight)
     }
 
     private var appearanceSetting: some View {

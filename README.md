@@ -14,7 +14,7 @@ over Bluetooth—no phone app, account, server, or package dependencies.
 </tr>
 </table>
 
-Screenshots are rendered from the native app connected to a WH-1000XM3.
+Controls were captured from the native app connected to a WH-1000XM3. Settings previews use simulated device state from the native UI tests.
 [Light controls](docs/screenshots/light-controls.png) · [Dark controls](docs/screenshots/dark-controls.png) · [Light settings](docs/screenshots/light-settings.png) · [Dark settings](docs/screenshots/dark-settings.png)
 
 ## Features
@@ -31,6 +31,7 @@ Screenshots are rendered from the native app connected to a WH-1000XM3.
   optional reconnection after unlock. Manual reconnection is the default.
 - **Appearance:** compact Auto / sun / moon control. Auto follows your Mac; Light and Dark override it immediately and persist between launches.
 - **Readability:** larger helper text, section icons, named controls, a visible selected-mode checkmark, and scrollable Settings.
+- **Stable panel position:** an open panel stays anchored to where you opened it; Settings reserves a separate scrollbar gutter.
 - **Menu bar preferences:** battery percentage and optional launch at login.
 - **Low background activity:** Bluetooth and volume notifications instead of
   repeating polling timers; bounded retries, cancelled work on sleep, and no
@@ -159,7 +160,7 @@ Set `SONY_MENU_SIGNING_IDENTITY=-` to explicitly build ad-hoc (as release CI doe
 zsh test.sh
 ```
 
-**61 automated tests** cover framing and stream recovery, Bluetooth command
+**64 automated tests** cover framing and stream recovery, Bluetooth command
 queues, retries and errors, preferences, appearance, volume synchronization,
 sleep/wake intent, microphone routing and readback, lifecycle cleanup, idle
 behavior, and native panel rendering.

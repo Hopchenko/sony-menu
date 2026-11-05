@@ -14,7 +14,7 @@ firmware 4.5.2.
 - Live Core Audio volume-change notifications reached the panel within a
   250 ms verification window after a write outside the app's state store.
 - An app volume write was read back from macOS; the original volume was restored.
-- All 61 simulated-device, preferences, lifecycle, protocol and UI tests passed.
+- All 64 simulated-device, preferences, lifecycle, protocol and UI tests passed.
 - Light, Dark and Device appearances were rendered; live appearance changes
   on an existing panel and preference persistence were tested.
 - The updated event-driven build passed all 13 live diagnostic assertions,
@@ -69,3 +69,5 @@ focus were checked on the installed app. Settings scroll within the available
 screen height. Apple's Inspector audit was inconclusive after an empty result
 also occurred on a deliberately unnamed-button fixture; no full-audit pass is
 claimed. See TESTING.md for scope and remaining manual checks.
+
+Panel positioning now snapshots the status item’s screen coordinates into a temporary transparent, non-interactive anchor window. Source-window motion and repeated opening leave the existing panel frame unchanged in native regression tests. Closing releases the anchor, and the next opening uses the newly clicked location. Settings height is captured on opening rather than following `NSScreen.main`. A live scroll check confirmed the scrollbar sits outside the cards and switches.
