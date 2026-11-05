@@ -211,8 +211,14 @@ final class SonyV1Client {
     }
 
     func setSoundQualityMode(_ mode: SonyV1SoundQualityMode) {
-        guard connectionState == .ready else { return }
-        enqueue(SonyV1Payloads.soundQuality(mode), label: "Sound quality \(mode.title)")
+        guard connectionState == .ready, profile.features.contains(.soundQualityMode), state.soundQualityMode != nil else { return }
+        let pending = commandQueue + (inFlight.map { [$0.command] } ?? [])
+        let changing = pending.contains { $0.coalescingKey == "sound-quality-set" || $0.label == "Sound quality verify" }
+        guard state.soundQualityMode != mode || changing else { return }
+        enqueue(SonyV1Payloads.soundQuality(mode), label: "Sound quality \(mode.title)", coalescingKey: "sound-quality-set") { [weak self] in
+            self?.enqueue([SonyV1Opcode.audioSettingGet, 0x01], label: "Sound quality verify")
+            self?.enqueue([SonyV1Opcode.codecGet, 0x00], label: "Codec after quality change")
+        }
     }
 
     func setTouchSensor(enabled: Bool) {
@@ -308,6 +314,7 @@ final class SonyV1Client {
         enqueue([SonyV1Opcode.codecGet, 0x00], label: "Codec get")
         enqueue([SonyV1Opcode.noiseCapabilityGet, 0x02], label: "NCASM capability get")
         enqueue([SonyV1Opcode.noiseGet, 0x02], label: "NCASM get")
+        enqueueSoundQualityQuery()
         enqueue(
             [SonyV1Opcode.playbackGet, 0x01, 0x20],
             label: "Volume get"
@@ -321,6 +328,12 @@ final class SonyV1Client {
         enqueue([SonyV1Opcode.codecGet, 0x00], label: "Codec refresh")
         enqueue([SonyV1Opcode.noiseGet, 0x02], label: "NCASM refresh")
         enqueue([SonyV1Opcode.playbackGet, 0x01, 0x20], label: "Volume refresh")
+        enqueueSoundQualityQuery()
+    }
+
+    private func enqueueSoundQualityQuery() {
+        guard profile.features.contains(.soundQualityMode) else { return }
+        enqueue([SonyV1Opcode.audioSettingGet, 0x01], label: "Sound quality get", coalescingKey: "sound-quality-get")
     }
 
     private func enqueueExtendedStateQueriesIfSupported() {
@@ -644,7 +657,8 @@ final class SonyV1Client {
         guard payload.count >= 4 else { return }
         switch payload[1] {
         case 0x01:
-            state.soundQualityMode = SonyV1SoundQualityMode(rawValue: payload[3])
+            guard payload[2] == 0x00, let mode = SonyV1SoundQualityMode(rawValue: payload[3]) else { return }
+            state.soundQualityMode = mode
         case 0x02:
             guard payload[3] <= 0x01 else { return }
             state.dseeEnabled = payload[3] == 0x01

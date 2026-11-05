@@ -140,6 +140,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             result["initialBluetoothAuthorization"] = initialBluetoothAuthorization
             result["microphoneDevices"] = store.microphones.devices.map { ["id": $0.id, "name": $0.name] as [String: Any] }
             result["selectedMicrophoneID"] = store.microphones.selectedID
+            result["soundQualityMode"] = store.state.soundQualityMode?.title
+            if CommandLine.arguments.contains("--verify-sound-quality"), store.ready, let original = store.state.soundQualityMode {
+                let alternate: SonyV1SoundQualityMode = original == .prioritizeSoundQuality ? .prioritizeStableConnection : .prioritizeSoundQuality
+                store.setSoundQualityMode(alternate)
+                try? await Task.sleep(for: .seconds(3))
+                if !store.ready { store.connect(); try? await Task.sleep(for: .seconds(7)) }
+                result["soundQualityChangeConfirmed"] = store.ready && store.state.soundQualityMode == alternate
+                result["codecAfterSoundQualityChange"] = store.state.codecName
+                store.setSoundQualityMode(original)
+                try? await Task.sleep(for: .seconds(3))
+                if !store.ready { store.connect(); try? await Task.sleep(for: .seconds(7)) }
+                result["originalSoundQualityRestored"] = store.ready && store.state.soundQualityMode == original
+                result["soundQualityAfterRestore"] = store.state.soundQualityMode?.title
+            }
             if CommandLine.arguments.contains("--inspect-sidetone"), store.ready {
                 store.client.inspectCallCapabilities()
                 try? await Task.sleep(for: .seconds(11))

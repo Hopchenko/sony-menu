@@ -35,6 +35,8 @@ enum TestMain {
         await interfaceTests()
         await accessibilityTests()
         await popoverTests()
+        await soundQualityTests()
+        await nativeFieldTests()
         print("\n\(passed) tests passed; \(failed) failed.")
         exit(failed == 0 ? 0 : 1)
     }
@@ -546,6 +548,23 @@ enum TestMain {
                 rig.store.notice = "A representative error message that wraps across several lines."
                 let host = NSHostingView(rootView: HeadphonePanel(store: rig.store))
                 try expect(abs(host.fittingSize.width - 360) < 1 && host.fittingSize.height < 800)
+            }
+            rig.store.notice = nil
+            for theme in [AppAppearance.light, .dark] {
+                rig.store.appearance = theme
+                for (index, mode) in [SonyV1NoiseMode.noiseCancellation, .ambient, .off].enumerated() {
+                    rig.store.state.noiseMode = mode
+                    let host = NSHostingView(rootView: HeadphonePanel(store: rig.store))
+                    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 360, height: 650), styleMask: [.borderless], backing: .buffered, defer: false)
+                    window.appearance = theme.native
+                    window.contentView = host
+                    host.setFrameSize(host.fittingSize)
+                    host.layoutSubtreeIfNeeded()
+                    guard let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { throw TestFailure(description: "Design preview failed") }
+                    host.cacheDisplay(in: host.bounds, to: bitmap)
+                    try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "build/test-previews/design-\(theme.rawValue)-\(index).png"))
+                    window.contentView = nil
+                }
             }
         }
     }

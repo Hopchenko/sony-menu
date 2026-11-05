@@ -6,7 +6,7 @@
 zsh test.sh
 ```
 
-The suite currently contains 64 named tests. It compiles the production source
+The suite currently contains 75 named tests. It compiles the production source
 with LLVM instrumentation, runs against isolated preferences and simulated
 Bluetooth/macOS services, and renders native SwiftUI panels in Light, Dark,
 and Auto appearance. It never changes your real headphone or login settings.
@@ -29,6 +29,7 @@ where the user keychain's trust settings are available.
 | Protocol framing | Known wire fixture, every-byte payload, every split boundary, combined frames, checksum/length validation, illegal escapes, bounded parser and recovery |
 | Bluetooth client | Handshake, unsupported versions, replies/notifications, ACK sequencing, retries, timeouts, write failure, command coalescing, readback, cancellation |
 | Controls | Noise modes, ambient level and voice focus, value clamping, debounce, latest-command behavior, macOS volume reads/writes and external change notifications |
+| Sound quality | Initial/refresh reads, both SET payloads plus GET readback, rejected writes, phone notifications, invalid values, unknown/missing support, rapid reversal, no-op/disconnected/shutdown guards, reconnect state reset |
 | Microphone | Current input without auto-switching, selection in either direction, external routing updates, vanished devices, write/readback failures, shutdown cleanup |
 | Sleep and connection | Manual disconnect intent, optional reconnect, repeated background wake, unlock-before-wake, disabled sleep disconnect, pairing errors, bounded retries |
 | Lifecycle and efficiency | No idle polling or keepalive requests, cancelled work on sleep, subscriptions removed on shutdown, diagnostics disabled normally |
@@ -113,3 +114,21 @@ full audit. The report is not used as evidence that the app is fully accessible.
 The automated checks and live inspection above are the validated results.
 
 The positioning regression moves the source window (to a second display when available), checks that the open popover and its independent anchor keep their frames, and verifies that a fresh opening uses the new position. Live scrolling confirmed the scrollbar remains in its own gutter outside the settings cards. Physical focus changes between displays remain a manual check.
+
+## Sound quality live check
+
+With the XM3 connected to the Mac, quit the app and run:
+
+```sh
+open -W '/Applications/Sony Menu.app' --args --diagnose --verify-sound-quality
+python3 Tests/verify_quality_live.py
+```
+
+This explicitly switches to the other sound-quality mode, checks the headset
+readback, restores the original mode, and reconnects if the headset interrupts
+the link. Audio may pause. Normal operation only queries this setting at
+connection, explicit refresh and after a setting write; it does not poll.
+
+The UI renders also write `design-light-0/1/2.png` and `design-dark-0/1/2.png` for Noise Cancelling, Ambient Sound and Off. These variants support visual review of equal-width tiles, two-line labels, selection badges, ambient controls, card/section spacing and footer alignment. Sound quality is in Settings → Audio.
+
+Native field tests cover fixed width with long device names, full-name tooltips, confirmed selection after a rejected write, and matching main/Settings card edges measured from rendered Light/Dark images. The scrollbar rail occupies the outer margin so it does not narrow the Settings cards.

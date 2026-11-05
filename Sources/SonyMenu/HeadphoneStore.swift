@@ -191,6 +191,11 @@ final class HeadphoneStore: ObservableObject {
         }
     }
 
+    func setSoundQualityMode(_ mode: SonyV1SoundQualityMode) {
+        guard !stopped, ready, state.soundQualityMode != nil else { return }
+        client.setSoundQualityMode(mode)
+    }
+
     func setVolume(_ value: Double) {
         guard platform.writeVolume(value) else { notice = "macOS could not change the headphone volume."; return }
         outputVolume = platform.readVolume()

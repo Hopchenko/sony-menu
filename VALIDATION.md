@@ -14,7 +14,7 @@ firmware 4.5.2.
 - Live Core Audio volume-change notifications reached the panel within a
   250 ms verification window after a write outside the app's state store.
 - An app volume write was read back from macOS; the original volume was restored.
-- All 64 simulated-device, preferences, lifecycle, protocol and UI tests passed.
+- All 75 simulated-device, preferences, lifecycle, protocol and UI tests passed.
 - Light, Dark and Device appearances were rendered; live appearance changes
   on an existing panel and preference persistence were tested.
 - The updated event-driven build passed all 13 live diagnostic assertions,
@@ -30,7 +30,7 @@ Meet's own per-call input selection still requires a manual check.
 The user subsequently confirmed that selecting MacBook Pro Microphone inside
 Google Meet (rather than changing only the Mac default) resolved the call
 sidetone problem. Read-only XM3 capability checks found no exposed sidetone
-setting. Microphone controls now live in Settings → Call audio.
+setting. Microphone controls now live in Settings → Audio.
 
 Version 1.1.1 installs at `/Applications/Sony Menu.app` with an icon built from
 the same user-provided headphone picture shown in the panel. A dedicated local
@@ -71,3 +71,9 @@ also occurred on a deliberately unnamed-button fixture; no full-audit pass is
 claimed. See TESTING.md for scope and remaining manual checks.
 
 Panel positioning now snapshots the status item’s screen coordinates into a temporary transparent, non-interactive anchor window. Source-window motion and repeated opening leave the existing panel frame unchanged in native regression tests. Closing releases the anchor, and the next opening uses the newly clicked location. Settings height is captured on opening rather than following `NSScreen.main`. A live scroll check confirmed the scrollbar sits outside the cards and switches.
+
+The connected XM3 confirmed changing from Prioritize Sound Quality to Prioritize Stable Connection and restoring Prioritize Sound Quality. All four live quality assertions passed. The mode uses GET `E6 01` and SET `E8 01 00 <mode>` (`00` quality, `01` stability), followed by setting and codec readback. Valid notifications also update the panel. Unsupported/unreported settings stay disabled; ACK alone never changes the selected state.
+
+The final visual pass checks Light and Dark controls, all three selectable noise modes, the expanded ambient section and Settings. Mode tiles use equal widths, explicit two-line labels, retained mode icons and a separate selection badge. Cards share 14 pt insets, 12 pt gaps and 12 pt corner radii; Settings groups use 16 pt gaps. Voice focus switches align at the trailing edge, the More menu has one icon, and the footer separator respects the panel inset. Sound quality and microphone controls live together in Settings → Audio. Notices inside Settings scroll with the content rather than increasing the fixed viewport.
+
+Native popup fields now fill the same content width, and label icons use a fixed 16 pt column with an 8 pt label gap. Appearance segments fill their allocated width. Rendered pixel checks confirm matching main/Settings card edges in both themes; the scroll rail occupies the outer margin rather than reducing the Settings card width. Native field tests retain the confirmed selection after a rejected write and keep long device names within the fixed field width while exposing full tooltips.

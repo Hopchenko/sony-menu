@@ -18,11 +18,12 @@ struct AppearancePicker: NSViewRepresentable {
         let control = NSSegmentedControl(labels: ["Auto", "", ""], trackingMode: .selectOne, target: target, action: action)
         control.segmentStyle = .rounded
         control.controlSize = .regular
+        control.segmentDistribution = .fill
         control.setAccessibilityLabel("Appearance")
         for (index, entry) in [("desktopcomputer", "Auto: follow Mac appearance"), ("sun.max", "Light appearance"), ("moon", "Dark appearance")].enumerated() {
             control.setImage(NSImage(systemSymbolName: entry.0, accessibilityDescription: entry.1), forSegment: index)
             control.setToolTip(entry.1, forSegment: index)
-            control.setWidth(index == 0 ? 62 : 32, forSegment: index)
+            control.setWidth(index == 0 ? 62 : 0, forSegment: index)
         }
         return control
     }

@@ -14,13 +14,14 @@ over Bluetooth—no phone app, account, server, or package dependencies.
 </tr>
 </table>
 
-Controls were captured from the native app connected to a WH-1000XM3. Settings previews use simulated device state from the native UI tests.
+Previews are rendered by the native UI tests using representative WH-1000XM3 state.
 [Light controls](docs/screenshots/light-controls.png) · [Dark controls](docs/screenshots/dark-controls.png) · [Light settings](docs/screenshots/light-settings.png) · [Dark settings](docs/screenshots/dark-settings.png)
 
 ## Features
 
 - **Noise control:** Noise Cancelling, Ambient Sound, and Off, with state read
   back from the headphones rather than assuming the command worked.
+- **Sound quality mode:** choose sound quality or a stable connection in Settings → Audio, with the selected mode read back from the headphones.
 - **Ambient sound:** level adjustment and Focus on voice.
 - **Volume sync:** the slider, macOS controls, and headphone gestures use the
   same Core Audio device volume. External changes update the panel live.
@@ -36,6 +37,8 @@ Controls were captured from the native app connected to a WH-1000XM3. Settings p
 - **Low background activity:** Bluetooth and volume notifications instead of
   repeating polling timers; bounded retries, cancelled work on sleep, and no
   normal packet logging or keepalive requests.
+
+The quality selector controls Sony’s [sound quality mode](https://helpguide.sony.net/mdr/wh1000xm3/v1/en/contents/TP0001703137.html). Changing it may interrupt audio or reconnect the headset. It does not force a particular codec; the codec label shows what the headphones report.
 
 ## Install
 
@@ -85,7 +88,7 @@ handler without putting the computer to sleep.
 
 ## Calls and microphone control
 
-The **Settings → Call audio → Microphone** dropdown changes the Mac’s default input without
+The **Settings → Audio → Microphone** dropdown changes the Mac’s default input without
 selecting a different output device. You can switch back and forth at any
 time; the app does not choose for you or record audio.
 
@@ -160,7 +163,7 @@ Set `SONY_MENU_SIGNING_IDENTITY=-` to explicitly build ad-hoc (as release CI doe
 zsh test.sh
 ```
 
-**64 automated tests** cover framing and stream recovery, Bluetooth command
+**75 automated tests** cover framing and stream recovery, Bluetooth command
 queues, retries and errors, preferences, appearance, volume synchronization,
 sleep/wake intent, microphone routing and readback, lifecycle cleanup, idle
 behavior, and native panel rendering.
