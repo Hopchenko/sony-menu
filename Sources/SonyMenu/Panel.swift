@@ -45,9 +45,9 @@ struct HeadphonePanel: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            if let image = NSImage(named: "Headphones") {
+            if let image = NSImage(named: NSImage.Name(store.headphoneColor.imageName)) {
                 Image(nsImage: image).resizable().scaledToFit().frame(width: 72, height: 88)
-                    .accessibilityLabel("Sony WH-1000XM3 headphones")
+                    .accessibilityLabel("\(store.headphoneColor.title) Sony WH-1000XM3 headphones")
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text("WH-1000XM3").font(.system(size: 15, weight: .semibold))
@@ -225,7 +225,7 @@ struct HeadphonePanel: View {
                     VStack(spacing: 0) {
                         settingToggle("Disconnect when Mac sleeps", detail: "Release WH-1000XM3 when this Mac goes to sleep.", binding: $store.disconnectOnSleep)
                         Divider()
-                        settingToggle("Reconnect after unlock", detail: "Only if disconnected by Sony Menu.", binding: $store.reconnectAfterUnlock)
+                        settingToggle("Reconnect after unlock", detail: "Only if this app disconnected them.", binding: $store.reconnectAfterUnlock)
                             .disabled(!store.disconnectOnSleep)
                     }.padding(.horizontal, 14).background(cardColor, in: RoundedRectangle(cornerRadius: 12))
                     Text(sleepSummary).font(.system(size: 12)).foregroundStyle(secondaryColor)
@@ -237,14 +237,52 @@ struct HeadphonePanel: View {
                         settingToggle("Open at login", binding: Binding(get: { store.launchAtLogin }, set: { store.setLaunchAtLogin($0) }))
                         Divider()
                         settingToggle("Show battery in menu bar", binding: $store.showBattery)
+                        Divider()
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Headphone color", systemImage: "paintpalette").font(.system(size: 13, weight: .medium))
+                            HStack(spacing: 8) {
+                                ForEach(HeadphoneColorChoice.allCases) { choice in colorTile(choice) }
+                            }
+                            Text(store.headphoneColorDetail).font(.system(size: 12)).foregroundStyle(secondaryColor)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }.padding(.vertical, 12)
                     }.padding(.horizontal, 14).background(cardColor, in: RoundedRectangle(cornerRadius: 12))
                 }
-                Text("Sony Menu · Unofficial Sony controller").font(.system(size: 12)).foregroundStyle(secondaryColor)
+                Text("\(AppIdentity.displayName) · Unofficial").font(.system(size: 12)).foregroundStyle(secondaryColor)
             }.padding(.bottom, 12).padding(.trailing, 14)
         }.labelStyle(SettingsLabelStyle()).scrollIndicators(.visible)
             // Let the scroll rail occupy the outer margin while the content
             // keeps the same 16 pt edges as the main panel and header.
             .frame(height: settingsViewportHeight).padding(.trailing, -14)
+    }
+
+    private func colorTile(_ choice: HeadphoneColorChoice) -> some View {
+        let selected = store.colorChoice == choice
+        let color = choice.resolve(reported: store.state.color, remembered: store.lastDetectedColor)
+        let title = choice == .automatic ? "Auto" : choice == .black ? "Black" : "Silver"
+        return Button { store.colorChoice = choice } label: {
+            VStack(spacing: 8) {
+                if let image = NSImage(named: NSImage.Name(color.imageName)) {
+                    Image(nsImage: image).resizable().scaledToFit().frame(height: 58).accessibilityHidden(true)
+                }
+                Text(title).font(.system(size: 12, weight: selected ? .medium : .regular))
+            }.padding(.horizontal, 8).padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+                .background(selected ? Color(nsColor: palette.selected) : panelColor.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .topTrailing) {
+                    if selected {
+                        Image(systemName: "checkmark.circle.fill").font(.system(size: 11)).padding(5).accessibilityHidden(true)
+                    }
+                }
+                .overlay(alignment: .bottomLeading) {
+                    if choice == .automatic {
+                        Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 9)).padding(6).accessibilityHidden(true)
+                    }
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 10))
+        }.buttonStyle(.plain).help(choice.title)
+            .accessibilityLabel(choice.title).accessibilityValue(selected ? "Selected" : "Not selected")
+            .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var appearanceSetting: some View {
@@ -257,7 +295,7 @@ struct HeadphonePanel: View {
     }
 
     private var sleepSummary: String {
-        if !store.disconnectOnSleep { return "Sony Menu will leave the connection unchanged on sleep." }
+        if !store.disconnectOnSleep { return "The connection stays unchanged on sleep." }
         return store.reconnectAfterUnlock
             ? "Disconnect on sleep. Reconnect after you unlock your Mac."
             : "Disconnect on sleep. Reconnect manually when you return."
@@ -291,7 +329,7 @@ struct HeadphonePanel: View {
                     else { Button("Connect headphones") { store.connect() } }
                     Button("Refresh") { store.refresh() }
                     Divider()
-                    Button("Quit Sony Menu") { NSApplication.shared.terminate(nil) }.keyboardShortcut("q")
+                    Button("Quit \(AppIdentity.displayName)") { NSApplication.shared.terminate(nil) }.keyboardShortcut("q")
                 } label: { Image(systemName: "ellipsis.circle") }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 28, height: 28).accessibilityLabel("More options").help("More options")
             }.font(.system(size: 12)).foregroundStyle(secondaryColor)

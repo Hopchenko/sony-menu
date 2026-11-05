@@ -443,6 +443,7 @@ enum SonyV1Payloads {
 
 struct SonyV1State: Equatable, Sendable {
     var modelName: String?
+    var color: HeadphoneColor?
     var batteryPercent: Int?
     var isCharging: Bool?
     var codecName: String?

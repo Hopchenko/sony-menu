@@ -25,22 +25,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var store: HeadphoneStore!
     private var subscriptions = Set<AnyCancellable>()
     private var initialBluetoothAuthorization: Int = 0
+    private let iconController = HeadphoneIconController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         initialBluetoothAuthorization = CBManager.authorization.rawValue
         // A normal click on the installed app reuses this one instance.
-        let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "local.sonymenu.app")
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? AppIdentity.bundleIdentifier)
             .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
         if !others.isEmpty { NSApp.terminate(nil); return }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "headphones", accessibilityDescription: "Sony Menu")
+            button.image = NSImage(systemSymbolName: "headphones", accessibilityDescription: AppIdentity.displayName)
             button.image?.isTemplate = true
             button.imagePosition = .imageLeading
             button.target = self
             button.action = #selector(togglePopover)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.toolTip = "Sony Menu — WH-1000XM3"
+            button.toolTip = "\(AppIdentity.displayName) — WH-1000XM3"
         }
         // Some macOS versions synchronously wait for CoreBluetooth callbacks
         // on the first IOBluetooth query. Keep the main run loop available.
@@ -56,7 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         host.sizingOptions = [.preferredContentSize]
         if CommandLine.arguments.contains("--accessibility-audit") {
             let window = NSWindow(contentViewController: host)
-            window.title = "Sony Menu — Accessibility Audit"
+            window.title = "\(AppIdentity.displayName) — Accessibility Audit"
             window.styleMask = [.titled, .closable]
             window.center()
             auditWindow = window
@@ -71,6 +72,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.auditWindow?.appearance = mode.native
             self.auditWindow?.contentView?.appearance = mode.native
         }.store(in: &subscriptions)
+        Publishers.CombineLatest3(store.$state.map(\.color), store.$colorChoice, store.$lastDetectedColor)
+            .map { reported, choice, remembered in choice.resolve(reported: reported, remembered: remembered) }
+            .removeDuplicates().sink { [weak self] color in self?.iconController.update(color) }
+            .store(in: &subscriptions)
         Publishers.CombineLatest3(store.$state, store.$showBattery, store.$connection)
             .receive(on: RunLoop.main).sink { [weak self] state, show, connection in
                 self?.item.button?.title = show && connection == .ready ? state.batteryPercent.map { " \($0)%" } ?? "" : ""
@@ -87,14 +92,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let loading = NSMenuItem(title: "Initializing Bluetooth…", action: nil, keyEquivalent: "")
             loading.isEnabled = false
             menu.addItem(loading)
-            let quit = NSMenuItem(title: "Quit Sony Menu", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+            let quit = NSMenuItem(title: "Quit \(AppIdentity.displayName)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
             quit.target = NSApp; menu.addItem(quit)
             if let button = item.button { menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.maxY), in: button) }
             return
         }
         if NSApp.currentEvent?.type == .rightMouseUp {
             let menu = NSMenu()
-            let quit = NSMenuItem(title: "Quit Sony Menu", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+            let quit = NSMenuItem(title: "Quit \(AppIdentity.displayName)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
             quit.target = NSApp
             menu.addItem(quit)
             if let button = item.button { menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.maxY), in: button) }
@@ -132,6 +137,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(12))
             var result: [String: Any] = ["connection": String(describing: store.connection), "bluetoothConnected": store.bluetoothConnected]
+            result["displayName"] = AppIdentity.displayName
+            result["bundleIdentifier"] = Bundle.main.bundleIdentifier
+            result["launchAtLogin"] = store.launchAtLogin
             result["battery"] = store.state.batteryPercent
             result["noiseMode"] = store.state.noiseMode.map { String(describing: $0) }
             result["ambientLevel"] = store.state.ambientLevel
@@ -141,6 +149,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             result["microphoneDevices"] = store.microphones.devices.map { ["id": $0.id, "name": $0.name] as [String: Any] }
             result["selectedMicrophoneID"] = store.microphones.selectedID
             result["soundQualityMode"] = store.state.soundQualityMode?.title
+            result["reportedHeadphoneColor"] = store.state.color?.rawValue
+            result["resolvedHeadphoneColor"] = store.headphoneColor.rawValue
+            result["headphoneColorChoice"] = store.colorChoice.rawValue
+            result["finderIconUpdated"] = iconController.finderIconUpdated
+            if CommandLine.arguments.contains("--verify-color-artwork") {
+                let original = store.colorChoice
+                var checks: [String: Any] = [:]
+                for choice in [HeadphoneColorChoice.silver, .black] {
+                    store.colorChoice = choice
+                    try? await Task.sleep(for: .milliseconds(300))
+                    let expected = NSImage(named: NSImage.Name(store.headphoneColor.imageName))
+                    let actual = NSApp.applicationIconImage
+                    let finder = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
+                    checks[choice.rawValue] = ["resolvedColor": store.headphoneColor.rawValue,
+                                               "applicationIconMatches": HeadphoneArtwork.matches(actual, expected),
+                                               "finderIconMatches": HeadphoneArtwork.matches(finder, expected),
+                                               "finderIconUpdated": iconController.finderIconUpdated]
+                    captureArtwork(NSApp.applicationIconImage, path: "/private/tmp/sony-menu-app-icon-\(choice.rawValue).png")
+                    captureArtwork(finder, path: "/private/tmp/sony-menu-finder-icon-\(choice.rawValue).png")
+                }
+                store.colorChoice = original
+                result["colorIconChecks"] = checks
+                result["colorChoiceRestored"] = store.colorChoice == original
+                result["bluetoothAuthorizationAfterIconChanges"] = CBManager.authorization.rawValue
+            }
             if CommandLine.arguments.contains("--verify-sound-quality"), store.ready, let original = store.state.soundQualityMode {
                 let alternate: SonyV1SoundQualityMode = original == .prioritizeSoundQuality ? .prioritizeStableConnection : .prioritizeSoundQuality
                 store.setSoundQualityMode(alternate)
@@ -236,6 +269,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             catch { NSLog("Diagnostic export failed: %@", error.localizedDescription) }
             NSApp.terminate(nil)
         }
+    }
+
+    private func captureArtwork(_ image: NSImage?, path: String) {
+        guard let data = image?.tiffRepresentation, let bitmap = NSBitmapImageRep(data: data),
+              let png = bitmap.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: URL(fileURLWithPath: path))
     }
 
     private func capturePanel(settings: Bool, path: String, appearance: AppAppearance = .light) {

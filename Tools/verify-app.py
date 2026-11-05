@@ -5,10 +5,12 @@ import plistlib
 import struct
 import subprocess
 import sys
+from bundle_signature import verify_bundle_signature
 
-app = Path(sys.argv[1] if len(sys.argv) > 1 else "build/Sony Menu.app")
+app = Path(sys.argv[1] if len(sys.argv) > 1 else "build/Sony Headphone Control.app")
 info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
 assert info["CFBundleIdentifier"] == "local.sonymenu.app"
+assert info["CFBundleDisplayName"] == "Sony Headphone Control"
 assert info["LSUIElement"] is True
 assert info.get("NSBluetoothAlwaysUsageDescription")
 executable = app / "Contents/MacOS" / info["CFBundleExecutable"]
@@ -30,5 +32,9 @@ assert {b"ic07", b"ic08", b"ic09", b"ic10"}.issubset(chunks), chunks
 assert chunks.intersection({b"icp4", b"ic04"}), "Missing 16px icon"
 assert chunks.intersection({b"icp5", b"ic05"}), "Missing 32px icon"
 assert (app / "Contents/Resources/ThirdPartyNotices.txt").is_file()
-subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
-print(f"Verified {info['CFBundleShortVersionString']}: app metadata, executable, icon sizes, notices and signature.")
+for name in ["Headphones.png", "HeadphonesSilver.png"]:
+    artwork = (app / "Contents/Resources" / name).read_bytes()
+    assert artwork[:8] == b"\x89PNG\r\n\x1a\n"
+    assert min(struct.unpack(">II", artwork[16:24])) >= 128
+signature = verify_bundle_signature(app)
+print(f"Verified {info['CFBundleShortVersionString']}: app metadata, executable, icon sizes, notices and {signature}.")

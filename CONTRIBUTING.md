@@ -1,6 +1,6 @@
 # Contributing
 
-Sony Menu is a small native Swift application. It has no third-party package
+Sony Headphone Control is a small native Swift application. It has no third-party package
 dependencies. Start with `zsh build.sh` and `zsh test.sh` on macOS with Xcode.
 
 Tests use simulated Bluetooth and macOS services; the normal test suite does

@@ -7,3 +7,7 @@ build/
 *.key
 /5250941.jpg
 /134a2eefe22c3000f28cf57296b6bcb5.avif
+
+__pycache__/
+*.pyc
+/a3bfc42e96ae057f8520f6ce9af1c17f.avif

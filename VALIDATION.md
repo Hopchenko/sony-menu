@@ -14,7 +14,7 @@ firmware 4.5.2.
 - Live Core Audio volume-change notifications reached the panel within a
   250 ms verification window after a write outside the app's state store.
 - An app volume write was read back from macOS; the original volume was restored.
-- All 75 simulated-device, preferences, lifecycle, protocol and UI tests passed.
+- All 87 simulated-device, preferences, lifecycle, protocol and UI tests passed.
 - Light, Dark and Device appearances were rendered; live appearance changes
   on an existing panel and preference persistence were tested.
 - The updated event-driven build passed all 13 live diagnostic assertions,
@@ -77,3 +77,18 @@ The connected XM3 confirmed changing from Prioritize Sound Quality to Prioritize
 The final visual pass checks Light and Dark controls, all three selectable noise modes, the expanded ambient section and Settings. Mode tiles use equal widths, explicit two-line labels, retained mode icons and a separate selection badge. Cards share 14 pt insets, 12 pt gaps and 12 pt corner radii; Settings groups use 16 pt gaps. Voice focus switches align at the trailing edge, the More menu has one icon, and the footer separator respects the panel inset. Sound quality and microphone controls live together in Settings → Audio. Notices inside Settings scroll with the content rather than increasing the fixed viewport.
 
 Native popup fields now fill the same content width, and label icons use a fixed 16 pt column with an 8 pt label gap. Appearance segments fill their allocated width. Rendered pixel checks confirm matching main/Settings card edges in both themes; the scroll rail occupies the outer margin rather than reducing the Settings card width. Native field tests retain the confirmed selection after a rejected write and keep long device names within the fixed field width while exposing full tooltips.
+
+Version 1.3 queried the connected XM3's series/color field and received Black.
+Both Silver and Black application and Finder icons matched their respective
+bundled images after normalization. Auto was restored. All 16 live color/icon
+assertions passed, including a second ready launch with Bluetooth already
+authorized (raw value 3). The installed signed code passed verification with
+its custom Finder icon preserved. The Swift suite has 87 tests, and all five
+signature-integrity tests passed locally. Color-selection photo tiles were
+rendered in both themes and inspected in the installed app.
+
+The app was renamed to Sony Headphone Control in version 1.3. The installer
+renamed the previous installation in place, keeping `local.sonymenu.app`, the
+existing signing identity, and preferences. The migrated app connected, kept
+Auto/Black color detection, retained enabled launch-at-login registration, and
+started with Bluetooth authorization already allowed (raw value 3).

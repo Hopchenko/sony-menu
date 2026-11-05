@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>Sony Menu</string>
-  <key>CFBundleDisplayName</key><string>Sony Menu</string>
+  <key>CFBundleName</key><string>Sony Headphone Control</string>
+  <key>CFBundleDisplayName</key><string>Sony Headphone Control</string>
   <key>CFBundleIdentifier</key><string>local.sonymenu.app</string>
   <key>CFBundleExecutable</key><string>SonyMenu</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.2.0</string>
-  <key>CFBundleVersion</key><string>4</string>
+  <key>CFBundleShortVersionString</key><string>1.3.0</string>
+  <key>CFBundleVersion</key><string>5</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSPrincipalClass</key><string>NSApplication</string>
-  <key>NSBluetoothAlwaysUsageDescription</key><string>Sony Menu uses Bluetooth to read battery and control noise cancellation, ambient sound, and volume on your WH-1000XM3 headphones.</string>
+  <key>NSBluetoothAlwaysUsageDescription</key><string>Sony Headphone Control uses Bluetooth to read battery and control noise cancellation, ambient sound, and volume on your WH-1000XM3 headphones.</string>
   <key>NSBluetoothPeripheralUsageDescription</key><string>Connect to your Sony headphones to read status and change audio settings.</string>
 </dict></plist>

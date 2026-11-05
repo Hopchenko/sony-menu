@@ -16,6 +16,7 @@ final class FakeTransport: SonyRFCOMMTransporting {
     var onConnect: (() -> Void)?
     var initReply: [UInt8] = [1, 0, 0x40, 0x10]
     var modelName = "WH-1000XM3"
+    var colorReply: [UInt8]? = [5, 3, 0, 1]
     var soundQuality: UInt8 = 0
     var qualityWritesApply = true
     var qualityReplies = true
@@ -68,7 +69,9 @@ final class FakeTransport: SonyRFCOMMTransporting {
         guard let opcode = payload.first else { return }
         switch opcode {
         case 0x00: emit(initReply)
-        case 0x04: emit([5, 1, UInt8(modelName.utf8.count)] + Array(modelName.utf8))
+        case 0x04:
+            if payload == [4, 1] { emit([5, 1, UInt8(modelName.utf8.count)] + Array(modelName.utf8)) }
+            else if payload == [4, 3], let colorReply { emit(colorReply) }
         case 0x10: emit([0x11, 0, 88, 0])
         case 0x18: emit([0x19, 0, 2])
         case 0x66: emit(noise)

@@ -1,4 +1,4 @@
-# Sony Menu
+# Sony Headphone Control
 
 Control Sony WH-1000XM3 noise cancellation, ambient sound, and volume from
 your Mac’s menu bar. A native SwiftUI app that talks directly to the headphones
@@ -7,11 +7,10 @@ over Bluetooth—no phone app, account, server, or package dependencies.
 **macOS 14+ · Apple Silicon · Unofficial · MIT-licensed code**
 
 <table>
-<tr><th>Headphone controls</th><th>Settings</th></tr>
-<tr>
-<td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-controls.png"><img src="docs/screenshots/light-controls.png" alt="Sony Menu with live battery, noise controls, and volume" width="360"></picture></td>
-<td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark-settings.png"><img src="docs/screenshots/light-settings.png" alt="Settings with sleep disconnect and Auto, Light, Dark appearance" width="360"></picture></td>
-</tr>
+<tr><th>Light controls</th><th>Dark controls</th></tr>
+<tr><td><img src="docs/screenshots/light-controls.png" alt="Sony Headphone Control in Light appearance" width="360"></td><td><img src="docs/screenshots/dark-controls.png" alt="Sony Headphone Control in Dark appearance" width="360"></td></tr>
+<tr><th>Light settings</th><th>Dark settings</th></tr>
+<tr><td><img src="docs/screenshots/light-settings.png" alt="Light settings with native appearance and audio controls" width="360"></td><td><img src="docs/screenshots/dark-settings.png" alt="Dark settings with native appearance and audio controls" width="360"></td></tr>
 </table>
 
 Previews are rendered by the native UI tests using representative WH-1000XM3 state.
@@ -30,6 +29,7 @@ Previews are rendered by the native UI tests using representative WH-1000XM3 sta
   microphones whenever you want, with live updates when macOS routing changes.
 - **Disconnect on sleep:** release the headphones when the Mac sleeps, with
   optional reconnection after unlock. Manual reconnection is the default.
+- **Matching headphone artwork:** Auto detects black or silver/white and uses the same picture in the panel and macOS app/Finder icon. Photo tiles in Settings → General provide manual overrides and remember your choice.
 - **Appearance:** compact Auto / sun / moon control. Auto follows your Mac; Light and Dark override it immediately and persist between launches.
 - **Readability:** larger helper text, section icons, named controls, a visible selected-mode checkmark, and scrollable Settings.
 - **Stable panel position:** an open panel stays anchored to where you opened it; Settings reserves a separate scrollbar gutter.
@@ -40,11 +40,31 @@ Previews are rendered by the native UI tests using representative WH-1000XM3 sta
 
 The quality selector controls Sony’s [sound quality mode](https://helpguide.sony.net/mdr/wh1000xm3/v1/en/contents/TP0001703137.html). Changing it may interrupt audio or reconnect the headset. It does not force a particular codec; the codec label shows what the headphones report.
 
+
+
+## Headphone color
+
+Auto reads the headset's series/color information when connecting and remembers
+the last known color while disconnected. Unknown or missing reports keep the
+last known image; you can choose **Black** or **Silver** from the photo tiles in
+**Settings → General → Headphone color**.
+
+The matching Finder icon persists when the app is closed. Install the app in a
+writable location such as Applications so macOS can apply its custom icon.
+
+<table>
+<tr><th>Photo selector · Light</th><th>Photo selector · Dark</th></tr>
+<tr><td><img src="docs/screenshots/color-selector-light-settings.png" alt="Auto, Black and Silver headphone photo choices in Light appearance" width="360"></td><td><img src="docs/screenshots/color-selector-dark-settings.png" alt="Auto, Black and Silver headphone photo choices in Dark appearance" width="360"></td></tr>
+</table>
+
+[Silver controls · Light](docs/screenshots/silver-light-controls.png) · [Silver controls · Dark](docs/screenshots/silver-dark-controls.png)
+
 ## Install
 
 1. Download the Apple Silicon `.zip` from
    [Releases](https://github.com/Hopchenko/sony-menu/releases/latest).
-2. Unzip it and move **Sony Menu.app** to Applications.
+2. Quit the previous version, unzip it, and move **Sony Headphone Control.app** to Applications.
+   When upgrading from Sony Menu, remove the old **Sony Menu.app** after replacing it. The source installer migrates that name automatically.
 3. Open the app and allow Bluetooth access if prompted.
 4. Pair/connect your **WH-1000XM3** in macOS Bluetooth settings, then click the
    headphones icon in the menu bar.
@@ -70,7 +90,7 @@ To launch at login, first put the app at its permanent location, then enable
 
 ## Sleep disconnection
 
-**Disconnect when Mac sleeps** is on by default. Sony Menu closes its control
+**Disconnect when Mac sleeps** is on by default. Sony Headphone Control closes its control
 session and requests disconnection of this headset’s Bluetooth link. It does
 not switch off the Mac’s Bluetooth, disconnect other devices, or forget pairing.
 
@@ -121,14 +141,14 @@ installation is needed.
 git clone https://github.com/Hopchenko/sony-menu.git
 cd sony-menu
 zsh build.sh
-open 'build/Sony Menu.app'
+open 'build/Sony Headphone Control.app'
 ```
 
-The build is created at `build/Sony Menu.app` and signed locally. Quit any
+The build is created at `build/Sony Headphone Control.app` and signed locally. Quit any
 running instance before launching a rebuilt version.
 
 To install the built app in Applications, run `zsh install.sh`. A native icon
-is included, so Sony Menu can be found in Finder, Applications and Spotlight.
+is included, so Sony Headphone Control can be found in Finder, Applications and Spotlight.
 
 ### Stable local signing and Bluetooth permission
 
@@ -142,10 +162,10 @@ For a local development installation, an explicit one-time setup is available:
 zsh Tools/create-local-signing-identity.sh
 zsh build.sh
 zsh install.sh
-open '/Applications/Sony Menu.app'
+open '/Applications/Sony Headphone Control.app'
 ```
 
-The setup creates a self-signed Sony Menu identity in the user's keychain and
+The setup reuses the established `Sony Menu Local Signing` identity in the user's keychain and
 adds user-level trust scoped to code signing. It does not change system-wide
 or TLS trust. The private key remains in the keychain; temporary key files are
 removed. It reuses that identity on future runs. macOS may ask for Keychain
@@ -163,10 +183,11 @@ Set `SONY_MENU_SIGNING_IDENTITY=-` to explicitly build ad-hoc (as release CI doe
 zsh test.sh
 ```
 
-**75 automated tests** cover framing and stream recovery, Bluetooth command
+**87 automated tests** cover framing and stream recovery, Bluetooth command
 queues, retries and errors, preferences, appearance, volume synchronization,
 sleep/wake intent, microphone routing and readback, lifecycle cleanup, idle
 behavior, and native panel rendering.
+Five additional signature-integrity tests ensure custom Finder-icon metadata cannot hide changed signed resources.
 They use simulated hardware and isolated preferences. CI runs the suite on
 macOS and uploads coverage, UI previews, and a packaged app.
 
@@ -198,6 +219,6 @@ Original notices are preserved in
 
 Application code is [MIT licensed](LICENSE). Sony trademarks and product imagery
 belong to their respective owners and are not licensed under the MIT license.
-Sony Menu is a community project, not affiliated with or endorsed by Sony.
+Sony Headphone Control is a community project, not affiliated with or endorsed by Sony.
 
 Bug reports and contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).

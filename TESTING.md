@@ -6,7 +6,7 @@
 zsh test.sh
 ```
 
-The suite currently contains 75 named tests. It compiles the production source
+The suite currently contains 87 named tests. It compiles the production source
 with LLVM instrumentation, runs against isolated preferences and simulated
 Bluetooth/macOS services, and renders native SwiftUI panels in Light, Dark,
 and Auto appearance. It never changes your real headphone or login settings.
@@ -43,12 +43,12 @@ not by the simulated suite. Rendering tests do not replace hands-on UI testing.
 
 ## Live hardware checks
 
-Quit any running Sony Menu instance first. These options temporarily change
+Quit any running Sony Headphone Control instance first. These options temporarily change
 noise mode and volume, disconnect the headphones, then restore the original
 settings and reconnect. They do not put the Mac to sleep.
 
 ```sh
-open 'build/Sony Menu.app' --args --diagnose --verify-idle --verify-volume-sync --verify-control --verify-sleep
+open 'build/Sony Headphone Control.app' --args --diagnose --verify-idle --verify-volume-sync --verify-control --verify-sleep
 ```
 
 After the diagnostic app exits, inspect `/private/tmp/sony-menu-diagnostics.json`.
@@ -97,10 +97,10 @@ activated the theme segments, with a visible native focus ring. Tab traversal
 across all controls and spoken VoiceOver output still need a manual check.
 
 For an Inspector-friendly window containing the same production panel, quit
-Sony Menu and run:
+Sony Headphone Control and run:
 
 ```sh
-open '/Applications/Sony Menu.app' --args --accessibility-audit
+open '/Applications/Sony Headphone Control.app' --args --accessibility-audit
 ```
 
 Quit and relaunch normally to return to menu-bar-only operation. The audit flag
@@ -120,7 +120,7 @@ The positioning regression moves the source window (to a second display when ava
 With the XM3 connected to the Mac, quit the app and run:
 
 ```sh
-open -W '/Applications/Sony Menu.app' --args --diagnose --verify-sound-quality
+open -W '/Applications/Sony Headphone Control.app' --args --diagnose --verify-sound-quality
 python3 Tests/verify_quality_live.py
 ```
 
@@ -132,3 +132,32 @@ connection, explicit refresh and after a setting write; it does not poll.
 The UI renders also write `design-light-0/1/2.png` and `design-dark-0/1/2.png` for Noise Cancelling, Ambient Sound and Off. These variants support visual review of equal-width tiles, two-line labels, selection badges, ambient controls, card/section spacing and footer alignment. Sound quality is in Settings → Audio.
 
 Native field tests cover fixed width with long device names, full-name tooltips, confirmed selection after a rejected write, and matching main/Settings card edges measured from rendered Light/Dark images. The scrollbar rail occupies the outer margin so it does not narrow the Settings cards.
+
+## Color and icon validation
+
+The suite includes color-query parsing, malformed/unknown values, manual override
+precedence, saved choices and last-known color, reconnect behavior, event-only
+icon updates, missing artwork, normalized pixel comparisons and Silver previews
+in both themes. The color selector uses named photo tiles with selected traits.
+
+```sh
+python3 -m unittest discover -s Tests -p 'test_bundle_signature.py'
+```
+
+These five checks cover clean bundles, custom Finder icons, unchanged originals,
+tampered sealed assets, missing custom-icon flags and unexpected metadata inside
+sealed resources.
+
+macOS stores custom Finder icons in bundle-level metadata and a reserved
+`Icon` resource-fork file. Normal code validity and the designated requirement
+remain intact. `Tools/verify-app.py` verifies the original normally, then applies
+strict verification to a temporary copy with only the recognized Finder-icon
+metadata removed. The installed app is untouched; public distribution bundles
+are clean and pass strict verification directly.
+
+With headphones connected, `--diagnose --verify-color-artwork` temporarily
+selects Silver and Black, checks normalized application/Finder icon pixels,
+restores the original choice and records Bluetooth authorization. Run
+`python3 Tests/verify_color_live.py` against that diagnostic output. A second
+plain diagnostic run verifies authorization on relaunch; pass its JSON as a
+second argument to the verifier. These checks do not change audio settings.

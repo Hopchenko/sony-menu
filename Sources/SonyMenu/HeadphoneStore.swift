@@ -24,6 +24,17 @@ final class HeadphoneStore: ObservableObject {
     @Published var showBattery: Bool {
         didSet { defaults.set(showBattery, forKey: "showBattery") }
     }
+    @Published var colorChoice: HeadphoneColorChoice {
+        didSet { defaults.set(colorChoice.rawValue, forKey: "headphoneColorChoice") }
+    }
+    @Published private(set) var lastDetectedColor: HeadphoneColor?
+    var headphoneColor: HeadphoneColor { colorChoice.resolve(reported: state.color, remembered: lastDetectedColor) }
+    var headphoneColorDetail: String {
+        if colorChoice != .automatic { return "Uses the same picture in the panel and app icon." }
+        if let color = state.color { return "Detected: \(color.title)." }
+        if let color = lastDetectedColor { return "Last detected: \(color.title). Connect to detect again." }
+        return "Detects when connected. Choose a color if unavailable."
+    }
     @Published var launchAtLogin = false
     private let defaults: UserDefaults
     let client: SonyV1Client
@@ -59,10 +70,16 @@ final class HeadphoneStore: ObservableObject {
         reconnectAfterUnlock = defaults.bool(forKey: "reconnectAfterUnlock")
         showBattery = defaults.bool(forKey: "showBattery")
         appearance = AppAppearance(savedValue: defaults.string(forKey: "appearance"))
+        colorChoice = defaults.string(forKey: "headphoneColorChoice").flatMap(HeadphoneColorChoice.init(rawValue:)) ?? .automatic
+        lastDetectedColor = defaults.string(forKey: "detectedHeadphoneColor").flatMap(HeadphoneColor.init(rawValue:))
         launchAtLogin = self.platform.loginEnabled
         self.client.onStateChange = { [weak self] state in
             guard let self, self.state != state else { return }
             self.state = state
+            if let color = state.color, self.lastDetectedColor != color {
+                self.lastDetectedColor = color
+                self.defaults.set(color.rawValue, forKey: "detectedHeadphoneColor")
+            }
         }
         self.client.onConnectionStateChange = { [weak self] connection in
             guard let self, !self.stopped else { return }
@@ -205,7 +222,7 @@ final class HeadphoneStore: ObservableObject {
         do {
             try platform.setLogin(enabled)
             launchAtLogin = platform.loginEnabled
-            if enabled && !launchAtLogin { notice = "Allow Sony Menu in System Settings → General → Login Items." }
+            if enabled && !launchAtLogin { notice = "Allow \(AppIdentity.displayName) in System Settings → General → Login Items." }
         } catch { notice = "Login setting could not be changed: \(error.localizedDescription)" }
     }
 

@@ -310,6 +310,7 @@ final class SonyV1Client {
         initialQueriesQueued = true
 
         enqueue([SonyV1Opcode.modelGet, 0x01], label: "Model get")
+        enqueue([SonyV1Opcode.modelGet, 0x03], label: "Series and color get")
         enqueue([SonyV1Opcode.batteryGet, 0x00], label: "Battery get")
         enqueue([SonyV1Opcode.codecGet, 0x00], label: "Codec get")
         enqueue([SonyV1Opcode.noiseCapabilityGet, 0x02], label: "NCASM capability get")
@@ -324,6 +325,7 @@ final class SonyV1Client {
     }
 
     private func enqueueStateQueries() {
+        if state.color == nil { enqueue([SonyV1Opcode.modelGet, 0x03], label: "Series and color refresh", coalescingKey: "color-get") }
         enqueue([SonyV1Opcode.batteryGet, 0x00], label: "Battery refresh")
         enqueue([SonyV1Opcode.codecGet, 0x00], label: "Codec refresh")
         enqueue([SonyV1Opcode.noiseGet, 0x02], label: "NCASM refresh")
@@ -565,6 +567,12 @@ final class SonyV1Client {
     }
 
     private func parseModel(_ payload: [UInt8]) {
+        if payload.count >= 4, payload[1] == 0x03 {
+            guard let color = HeadphoneColor(sonyValue: payload[3]) else { return }
+            state.color = color
+            publishState()
+            return
+        }
         guard payload.count >= 3, payload[1] == 0x01 else { return }
         let length = Int(payload[2])
         guard length > 0, payload.count >= length + 3 else { return }

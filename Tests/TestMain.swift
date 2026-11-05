@@ -30,6 +30,9 @@ enum TestMain {
         _ = NSApplication.shared
         NSApp.setActivationPolicy(.accessory)
         Diagnostics.shared.enabled = false
+        for color in HeadphoneColor.allCases {
+            if let image = NSImage(contentsOfFile: "Resources/\(color.imageName).png") { image.setName(NSImage.Name(color.imageName)) }
+        }
         await protocolTests()
         await storeTests()
         await interfaceTests()
@@ -37,6 +40,7 @@ enum TestMain {
         await popoverTests()
         await soundQualityTests()
         await nativeFieldTests()
+        await headphoneColorTests()
         print("\n\(passed) tests passed; \(failed) failed.")
         exit(failed == 0 ? 0 : 1)
     }

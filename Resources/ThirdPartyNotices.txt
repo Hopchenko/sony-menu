@@ -28,3 +28,7 @@ https://github.com/Plutoberth/SonyHeadphonesClient
 
 Sony trademarks and product imagery remain the property of their respective
 owners and are not licensed under the application's MIT license.
+
+Headphone artwork (Headphones.png, HeadphonesSilver.png and derived app icons)
+was supplied by the user. Sony product imagery is used to identify the device
+and remains subject to its owners' rights; it is not covered by the MIT license.
