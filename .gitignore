@@ -1,0 +1,6 @@
+build/
+.DS_Store
+*.profraw
+*.profdata
+/5250941.jpg
+/134a2eefe22c3000f28cf57296b6bcb5.avif

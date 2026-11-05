@@ -1,0 +1,35 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native application
+        run: zsh build.sh
+      - name: Verify app signature and metadata
+        run: |
+          codesign --verify --deep --strict 'build/Sony Menu.app'
+          plutil -lint 'build/Sony Menu.app/Contents/Info.plist'
+      - name: Run simulated-device and UI tests
+        run: zsh test.sh
+      - name: Upload coverage and appearance previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            build/coverage.txt
+            build/test-previews/
+      - name: Package Apple Silicon app
+        run: ditto -c -k --sequesterRsrc --keepParent 'build/Sony Menu.app' build/Sony-Menu-macOS-arm64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sony-Menu-macOS-arm64
+          path: build/Sony-Menu-macOS-arm64.zip
