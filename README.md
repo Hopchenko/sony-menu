@@ -137,11 +137,12 @@ with XM3/XM4 automatic detection, XM4 settings, and connection-progress improvem
 1. [Download Sony Headphone Control 1.5.1 for Apple Silicon](https://github.com/Hopchenko/sony-menu/releases/download/v1.5.1/Sony-Headphone-Control-1.5.1-macOS-arm64.zip).
    All versions and SHA-256 checksums are available on the
    [Releases page](https://github.com/Hopchenko/sony-menu/releases/latest).
-2. Quit the previous version, unzip it, and move **Sony Headphone Control.app** to Applications.
-   When upgrading from Sony Menu, remove the old **Sony Menu.app** after replacing it. The source installer migrates that name automatically.
+2. Unzip the download and move **Sony Headphone Control.app** to Applications.
 3. Open the app and allow Bluetooth access if prompted.
 4. Pair/connect your **WH-1000XM3 or WH-1000XM4** in macOS Bluetooth settings, then click the
    headphones icon in the menu bar.
+
+Already installed? Quit the app before replacing it in Applications.
 
 The downloadable app is **ad-hoc signed, not notarized**. macOS may block its
 first launch. If you choose to trust this build, follow Apple’s instructions
