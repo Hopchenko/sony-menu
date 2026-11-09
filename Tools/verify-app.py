@@ -33,7 +33,7 @@ assert {b"ic07", b"ic08", b"ic09", b"ic10"}.issubset(chunks), chunks
 assert chunks.intersection({b"icp4", b"ic04"}), "Missing 16px icon"
 assert chunks.intersection({b"icp5", b"ic05"}), "Missing 32px icon"
 assert (app / "Contents/Resources/ThirdPartyNotices.txt").is_file()
-for name in ["Headphones.png", "HeadphonesSilver.png"]:
+for name in ["Headphones.png", "HeadphonesSilver.png", "HeadphonesXM4Black.png", "HeadphonesXM4Silver.png", "HeadphonesXM4Blue.png"]:
     artwork = (app / "Contents/Resources" / name).read_bytes()
     assert artwork[:8] == b"\x89PNG\r\n\x1a\n"
     assert min(struct.unpack(">II", artwork[16:24])) >= 128

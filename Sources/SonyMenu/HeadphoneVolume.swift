@@ -3,7 +3,7 @@ import Foundation
 
 /// Only touches the Sony output device, even when another output is default.
 enum HeadphoneVolume {
-    fileprivate static func output() -> AudioDeviceID? {
+    fileprivate static func output(target: String? = nil) -> AudioDeviceID? {
         var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDevices, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
         var size: UInt32 = 0
         guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size) == noErr else { return nil }
@@ -17,15 +17,24 @@ enum HeadphoneVolume {
             var nameAddress = AudioObjectPropertyAddress(mSelector: kAudioObjectPropertyName, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
             guard AudioObjectGetPropertyData(device, &nameAddress, 0, nil, &nameSize, &name) == noErr,
                   let name else { return false }
-            guard (name.takeRetainedValue() as String) == "WH-1000XM3" else { return false }
+            guard HeadphoneModel(deviceName: name.takeRetainedValue() as String) != nil else { return false }
+            if let target {
+                var uid: Unmanaged<CFString>?
+                var uidSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+                var uidAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDeviceUID, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+                guard AudioObjectGetPropertyData(device, &uidAddress, 0, nil, &uidSize, &uid) == noErr, let uid else { return false }
+                let normalizedUID = (uid.takeRetainedValue() as String).lowercased().filter { $0.isHexDigit }
+                let normalizedTarget = target.lowercased().filter { $0.isHexDigit }
+                guard !normalizedTarget.isEmpty, normalizedUID.contains(normalizedTarget) else { return false }
+            }
             var streamAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams, mScope: kAudioDevicePropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
             var streamSize: UInt32 = 0
             return AudioObjectGetPropertyDataSize(device, &streamAddress, 0, nil, &streamSize) == noErr && streamSize > 0
         }
     }
 
-    static func read() -> Double? {
-        guard let device = output() else { return nil }
+    static func read(target: String? = nil) -> Double? {
+        guard let device = output(target: target) else { return nil }
         for element: UInt32 in [0, 1] {
             var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar, mScope: kAudioDevicePropertyScopeOutput, mElement: element)
             var value: Float32 = 0
@@ -35,8 +44,8 @@ enum HeadphoneVolume {
         return nil
     }
 
-    static func write(_ value: Double) -> Bool {
-        guard let device = output() else { return false }
+    static func write(_ value: Double, target: String? = nil) -> Bool {
+        guard let device = output(target: target) else { return false }
         var wrote = false
         for element: UInt32 in [0, 1, 2] {
             var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar, mScope: kAudioDevicePropertyScopeOutput, mElement: element)
@@ -64,9 +73,11 @@ final class HeadphoneVolumeObserver {
     private var observedDevice: AudioDeviceID?
     private var stopped = false
     private let onChange: (Double?) -> Void
+    private let target: () -> String?
     private(set) var volumeEventCount = 0
 
-    init(onChange: @escaping (Double?) -> Void) {
+    init(target: @escaping () -> String? = { nil }, onChange: @escaping (Double?) -> Void) {
+        self.target = target
         self.onChange = onChange
         var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDevices, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
         let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
@@ -81,7 +92,7 @@ final class HeadphoneVolumeObserver {
 
     func refresh() {
         guard !stopped else { return }
-        let device = HeadphoneVolume.output()
+        let device = HeadphoneVolume.output(target: target())
         if observedDevice != device || deviceListeners.isEmpty {
             removeDeviceListeners()
             observedDevice = device
@@ -93,7 +104,7 @@ final class HeadphoneVolumeObserver {
                         Task { @MainActor [weak self] in
                             guard let self, !self.stopped else { return }
                             self.volumeEventCount += 1
-                            self.onChange(HeadphoneVolume.read())
+                            self.onChange(HeadphoneVolume.read(target: self.target()))
                         }
                     }
                     if AudioObjectAddPropertyListenerBlock(device, &address, .main, block) == noErr {
@@ -102,7 +113,7 @@ final class HeadphoneVolumeObserver {
                 }
             }
         }
-        onChange(HeadphoneVolume.read())
+        onChange(HeadphoneVolume.read(target: self.target()))
     }
 
     func stop() {

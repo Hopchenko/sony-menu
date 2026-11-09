@@ -6,7 +6,7 @@
 zsh test.sh
 ```
 
-The suite currently contains 87 named tests. It compiles the production source
+The suite currently contains 108 named tests. It compiles the production source
 with LLVM instrumentation, runs against isolated preferences and simulated
 Bluetooth/macOS services, and renders native SwiftUI panels in Light, Dark,
 and Auto appearance. It never changes your real headphone or login settings.
@@ -173,3 +173,17 @@ Validation checks the bundle metadata; a live process check confirmed accessory
 policy 1. Spotlight and Launch Services each returned one installed copy after
 cleanup. The Apps grid could not be inspected because the native launcher UI
 failed to open through the computer-use tool.
+
+
+## XM4 regression and performance checks
+
+`Tests/XM4FeatureChecks.swift` covers capability discovery and the two idle
+regressions: no outgoing packets or connection checks after XM4 discovery, and
+no further reads/retries after a completed setting change. It also renders native
+Light/Dark settings previews with XM4 artwork and explanatory text.
+
+See [docs/performance.md](docs/performance.md) for the process CPU/wakeup audit.
+See [docs/xm4-features.md](docs/xm4-features.md) for feature command/readback
+validation and the multipoint confirmation/reconnect behavior. Do not repeat
+multipoint writes as part of an idle audit; the read-only `--verify-idle`
+diagnostic and process-counter sampler are sufficient.

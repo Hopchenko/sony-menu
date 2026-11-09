@@ -7,12 +7,12 @@
   <key>CFBundleExecutable</key><string>SonyMenu</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.3.3</string>
-  <key>CFBundleVersion</key><string>8</string>
+  <key>CFBundleShortVersionString</key><string>1.5.0</string>
+  <key>CFBundleVersion</key><string>11</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><false/>
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>NSPrincipalClass</key><string>NSApplication</string>
-  <key>NSBluetoothAlwaysUsageDescription</key><string>Sony Headphone Control uses Bluetooth to read battery and control noise cancellation, ambient sound, and volume on your WH-1000XM3 headphones.</string>
+  <key>NSBluetoothAlwaysUsageDescription</key><string>Sony Headphone Control uses Bluetooth to read battery and control noise cancellation, ambient sound, and volume on your Sony WH-1000XM3 or WH-1000XM4 headphones.</string>
   <key>NSBluetoothPeripheralUsageDescription</key><string>Connect to your Sony headphones to read status and change audio settings.</string>
 </dict></plist>

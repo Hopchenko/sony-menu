@@ -9,7 +9,7 @@ swiftc -swift-version 5 -parse-as-library -O -module-cache-path /private/tmp/son
   -o "$app_path/Contents/MacOS/SonyMenu" \
   -framework AppKit -framework SwiftUI -framework IOBluetooth -framework ServiceManagement -framework CoreAudio
 cp Resources/Info.plist "$app_path/Contents/Info.plist"
-cp Resources/Headphones.png Resources/HeadphonesSilver.png Resources/ThirdPartyNotices.txt "$app_path/Contents/Resources/"
+cp Resources/Headphones*.png Resources/ThirdPartyNotices.txt "$app_path/Contents/Resources/"
 if [[ -f Resources/AppIcon.png ]]; then
   iconset_path="$PWD/build/AppIcon.iconset"
   mkdir -p "$iconset_path"

@@ -99,3 +99,89 @@ unregisters their old paths. Spotlight and Launch Services both reported only
 is a normal Utilities app, while the running application reports accessory
 activation policy 1. This preserves menu-bar-only operation. The native launcher
 UI was unavailable for visual inspection; no global index reset was performed.
+
+
+## WH-1000XM4 support — 2026-11-09
+
+A connected WH-1000XM4 exposes Sony Serial HPC service
+96CC203E-5068-46AD-B32D-E316F5E069BA (channel 9 on this device; discovered by UUID).
+The unchanged V1 stack successfully reads model, battery 40%, AAC, noise
+cancellation and protocol volume 22/30. Init reply is 01 00 70 00; series/color
+reply is 05 03 30 05. Color 0x05 maps to Blue for XM4, physically confirmed by the owner; XM3 mappings are unchanged.
+No factory settings or pairing changes are part of this support.
+
+Automated tests cover connected-device preference, same-model device identity,
+explicit disconnected selection, model/artwork retention, scoped preferences,
+old ambient-write cancellation across sessions, XM4 V1 reply fixtures, and
+native Light/Dark renders of all three supplied XM4 artwork variants.
+Hardware command validation is recorded below for the local installation.
+Firmware version and simultaneous XM3/XM4 hardware behavior remain unverified.
+
+### Installed 1.4.0 hardware result
+
+The installed app selected the connected XM4 automatically while the paired XM3
+was disconnected. Auto resolved the owner-confirmed Blue report to
+HeadphonesXM4Blue, with battery 40%, AAC and noise cancellation.
+
+The live diagnostic passed: noise mode change and restoration; ambient level 7
+with voice focus; ambient maximum 20 without voice focus; original noise state
+restoration; selected Core Audio volume write/readback; external volume listener
+notification and panel sync; original volume restoration. System volume was
+restored to 0.75. A five-second idle observation produced zero connection checks
+and zero outgoing Bluetooth queries. Bluetooth authorization remained allowed
+before and after installation. The existing local signing identity was retained.
+
+96 app tests and five bundle signature-integrity tests passed. Native Light/Dark
+panels were rendered for Black, Silver and Blue. No physical sleep or simultaneous
+XM3/XM4 test was performed; those behaviors have automated regression coverage.
+
+
+## 1.4.1 sleep defaults — 2026-11-09
+
+Disconnect on sleep now defaults to Off for XM4 and On for XM3. Explicit saved
+preferences take precedence. The owner's current XM4 setting was changed to Off
+as requested. All 97 native tests pass, including XM4 sleep without a Bluetooth
+audio disconnect and retention of an explicit user preference.
+
+
+## 1.5.0 XM4 feature controls — 2026-11-09
+
+Added capability-driven Speak-to-Chat (toggle, sensitivity, conversation timeout
+and voice focus), multipoint, wear pause/resume, removed-headset power-off and
+DSEE Extreme Off/Auto. Settings contains a description for every control.
+
+Live device write/readback and restoration passed for every feature and for the
+conversation detail tuple. Initial values restored: Speak-to-Chat On, sensitivity
+Auto, conversation voice focus Off, timeout 30 seconds, multipoint On, wear
+pause/resume On, removed-headset power-off On, DSEE Off. Mac sleep disconnection
+remains Off. Acoustic enhancement and physical wear timing were not measured.
+
+Multipoint required registering fixed-message notifications (94 01 00), then
+confirming only the explicitly requested matching 99 message with 98. Without
+that registration, the headset ACKed the write but retained its setting. After
+a confirmed Off request it disconnected the Mac, and several immediate RFCOMM
+reconnection attempts timed out. The user reconnected the headset; the running
+app then read multipoint Off. A later On request, matching confirmation, native
+Bluetooth reconnection and final D7 D2 01 01 readback restored multipoint On.
+The UI reports success only after readback and allows a bounded reconnect
+window; manual reconnection may still be needed.
+
+106 native app tests and five signature-integrity tests pass. Native Light/Dark
+settings renders cover scrolling through conversation, multipoint, wearing and
+DSEE descriptions. The installed app is version 1.5.0, signed with the existing
+local identity. See docs/xm4-features.md for packet details and known limits.
+
+
+## Idle-efficiency recheck — 2026-11-09
+
+The installed 1.5.0 app stayed connected to XM4 and running normally during two
+separate 30-second background samples. Measured app CPU time was 0.000004 s and
+0.000000 s; both samples reported zero interrupt/package-idle wakeups and zero
+disk I/O. Physical footprint was stable within each sample (91.72 MiB and
+91.74 MiB). No idle-drain regression was observed; this is a process idle check,
+not a whole-Mac battery-life or Bluetooth-radio energy benchmark.
+
+Two new XM4 regressions verify no packets, connection checks, retries or volume
+writes after discovery, and no extra queries/retries after a completed setting
+change. All 108 app tests pass. See docs/performance.md for details and the
+optional Tools/measure-idle.c sampler for reproduction.

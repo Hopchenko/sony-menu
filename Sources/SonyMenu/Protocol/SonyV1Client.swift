@@ -54,6 +54,9 @@ final class SonyV1Client {
     private var readyFallbackTask: Task<Void, Never>?
     private var handshakeComplete = false
     private var initialQueriesQueued = false
+    private var requestedMultipoint: Bool?
+    private var multipointAlertConfirmed = false
+    private var multipointRequestExpiry: Task<Void, Never>?
     private var reportedNCType: UInt8 = 0x02
     private var reportedASMType: UInt8 = 0x01
     private var reportedASMID: UInt8 = 0x00
@@ -115,6 +118,137 @@ final class SonyV1Client {
         // is sent and no response is treated as support without validation.
         enqueue([0xF0, 0x08], label: "Call settings capability inquiry")
         enqueue([0xF6, 0x08], label: "Call settings parameter inquiry")
+    }
+
+    private var isXM4: Bool { HeadphoneModel(deviceName: state.modelName ?? deviceName) == .xm4 }
+
+    @discardableResult func setSpeakToChat(_ enabled: Bool) -> Bool {
+        guard isXM4, connectionState == .ready, state.xm4.speakToChatAvailable, state.xm4.speakToChatEnabled != nil else { return false }
+        enqueue([0xF8,5,1,enabled ? 1 : 0], label: "Speak-to-Chat set", coalescingKey: "speak-to-chat") { [weak self] in
+            self?.enqueue([0xF6,5], label: "Speak-to-Chat verify")
+        }
+        return true
+    }
+
+    @discardableResult func setConversationOptions(_ options: SonyConversationOptions) -> Bool {
+        guard isXM4, connectionState == .ready, state.xm4.speakToChatAvailable, state.xm4.conversationOptions != nil else { return false }
+        enqueue(options.payload, label: "Conversation settings set", coalescingKey: "conversation-settings") { [weak self] in
+            self?.enqueue([0xFA,5], label: "Conversation settings verify")
+        }
+        return true
+    }
+
+    @discardableResult func setWearDetection(_ enabled: Bool) -> Bool {
+        guard isXM4, connectionState == .ready, state.xm4.wearDetectionAvailable, state.xm4.wearDetectionEnabled != nil else { return false }
+        enqueue([0xF8,3,0,enabled ? 1 : 0], label: "Wear detection set") { [weak self] in
+            self?.enqueue([0xF6,3], label: "Wear detection verify")
+        }
+        return true
+    }
+
+    @discardableResult func setWearPowerOff(_ enabled: Bool) -> Bool {
+        guard isXM4, connectionState == .ready, state.xm4.wearPowerOffAvailable, state.xm4.wearPowerOffEnabled != nil,
+              let timer = state.xm4.wearPowerOffTimer else { return false }
+        enqueue([0xF8,4,1,enabled ? 0x10 : 0x11,timer], label: "Wear power off set") { [weak self] in
+            self?.enqueue([0xF6,4], label: "Wear power off verify")
+        }
+        return true
+    }
+
+    @discardableResult func setMultipoint(_ enabled: Bool) -> Bool {
+        guard isXM4, connectionState == .ready, let slot = state.xm4.multipointSlot, state.xm4.multipointEnabled != nil else { return false }
+        requestedMultipoint = enabled
+        multipointAlertConfirmed = false
+        multipointRequestExpiry?.cancel()
+        let expectedGeneration = generation
+        multipointRequestExpiry = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard let self, !Task.isCancelled, self.generation == expectedGeneration else { return }
+            self.cancelMultipointRequest()
+        }
+        // The headset refuses a reconnecting change unless the client has
+        // subscribed to Sony's fixed-message confirmation exchange.
+        enqueue([0x94,1,0], label: "Subscribe to multipoint confirmation")
+        enqueue([0xD8,slot,1,enabled ? 1 : 0], label: "Multipoint set", coalescingKey: "multipoint") { [weak self] in
+            guard let self else { return }
+            self.enqueue([0xD6,slot], label: "Multipoint verify")
+            self.enqueue([0x18,0], label: "Codec after multipoint change")
+        }
+        return true
+    }
+
+    func cancelMultipointRequest() {
+        requestedMultipoint = nil
+        multipointAlertConfirmed = false
+        multipointRequestExpiry?.cancel(); multipointRequestExpiry = nil
+    }
+
+    @discardableResult func setXM4DSEE(_ enabled: Bool) -> Bool {
+        guard isXM4, connectionState == .ready, state.xm4.dseeAvailable, state.dseeEnabled != nil else { return false }
+        setDSEE(enabled: enabled)
+        return true
+    }
+
+    /// Read replies establish availability; ACKs never change setting values.
+    private func parseXM4Setting(_ p: [UInt8]) -> Bool {
+        guard let opcode = p.first else { return false }
+        switch opcode {
+        case 0x99:
+            guard p.count == 4, p[1] == 1, p[3] <= 1, let desired = requestedMultipoint,
+                  p[2] == (desired ? 6 : 7), !multipointAlertConfirmed else { return true }
+            // Confirm only the exact connection change explicitly requested by
+            // this session. Never accept unrelated or unsolicited alerts.
+            multipointAlertConfirmed = true
+            enqueue([0x98,1,p[2],1], label: "Confirm requested multipoint change") { [weak self] in
+                guard let self, let slot = self.state.xm4.multipointSlot else { return }
+                self.enqueue([0xD6,slot], label: "Multipoint after confirmation")
+            }
+        case 0xF1:
+            guard p.count >= 3 else { return true }
+            switch p[1] {
+            case 3 where p.count == 3 && p[2] == 0:
+                state.xm4.wearDetectionAvailable = true
+                enqueue([0xF6,3], label: "Wear detection get")
+            case 4 where p.count >= 3 && p.count == Int(p[2]) + 3 && p.dropFirst(3).contains(0x10) && p.dropFirst(3).contains(0x11):
+                state.xm4.wearPowerOffAvailable = true
+                enqueue([0xF6,4], label: "Wear power off get")
+            case 5 where p.count == 12 && p[2] == 0 && p[3] <= 1 && p[4] == 0 && p[5] == 0 && p[6] == 0:
+                state.xm4.speakToChatAvailable = true
+                enqueue([0xF6,5], label: "Speak-to-Chat get")
+                enqueue([0xFA,5], label: "Conversation settings get")
+            default: break
+            }
+        case 0xE1:
+            guard p.count == 4, p[1] == 2, p[2] == 2, p[3] == 0 else { return false }
+            state.xm4.dseeAvailable = true
+            enqueue([0xE6,2], label: "DSEE Extreme get")
+        case 0xD1:
+            guard let slot = SonyXM4Settings.multipointSlot(from: p) else { return true }
+            state.xm4.multipointSlot = slot
+            enqueue([0xD6,slot], label: "Multipoint get")
+        case 0xD7, 0xD9:
+            guard p.count == 4, p[1] == state.xm4.multipointSlot, p[2] == 1, p[3] <= 1 else { return false }
+            state.xm4.multipointEnabled = p[3] == 1
+            if state.xm4.multipointEnabled == requestedMultipoint { cancelMultipointRequest() }
+        case 0xF7, 0xF9:
+            guard p.count >= 4 else { return true }
+            switch p[1] {
+            case 3 where p.count == 4 && p[2] == 0 && p[3] <= 1 && state.xm4.wearDetectionAvailable:
+                state.xm4.wearDetectionEnabled = p[3] == 1
+            case 4 where p.count == 5 && p[2] == 1 && [0x10,0x11].contains(p[3]) && state.xm4.wearPowerOffAvailable:
+                state.xm4.wearPowerOffEnabled = p[3] == 0x10
+                state.xm4.wearPowerOffTimer = p[4]
+            case 5 where p.count == 4 && p[2] <= 1 && p[3] <= 1 && state.xm4.speakToChatAvailable:
+                state.xm4.speakToChatEnabled = p[3] == 1
+            default: return false
+            }
+        case 0xFB, 0xFD:
+            guard state.xm4.speakToChatAvailable, let options = SonyConversationOptions(reply: p) else { return true }
+            state.xm4.conversationOptions = options
+        default: return false
+        }
+        publishState()
+        return true
     }
 
     func setNoiseMode(_ mode: SonyV1NoiseMode, ambientLevel: Int? = nil) {
@@ -222,7 +356,7 @@ final class SonyV1Client {
     }
 
     func setTouchSensor(enabled: Bool) {
-        guard connectionState == .ready else { return }
+        guard connectionState == .ready, !isXM4 else { return }
         enqueue(SonyV1Payloads.touchSensor(enabled: enabled), label: "Touch sensor \(enabled ? "on" : "off")") {
             [weak self] in
             self?.enqueue([SonyV1Opcode.touchSensorGet, 0xD2], label: "Touch sensor verify")
@@ -322,6 +456,11 @@ final class SonyV1Client {
         ) { [weak self] in
             self?.markReady()
         }
+        if isXM4 {
+            for payload: [UInt8] in [[0xF0,3], [0xF0,4], [0xF0,5], [0xE0,2], [0xD0,0xD1,1], [0xD0,0xD2,1]] {
+                enqueue(payload, label: "XM4 capability inquiry")
+            }
+        }
     }
 
     private func enqueueStateQueries() {
@@ -331,6 +470,13 @@ final class SonyV1Client {
         enqueue([SonyV1Opcode.noiseGet, 0x02], label: "NCASM refresh")
         enqueue([SonyV1Opcode.playbackGet, 0x01, 0x20], label: "Volume refresh")
         enqueueSoundQualityQuery()
+        if isXM4 {
+            if state.xm4.speakToChatAvailable { enqueue([0xF6,5], label: "Speak-to-Chat refresh"); enqueue([0xFA,5], label: "Conversation settings refresh") }
+            if state.xm4.wearDetectionAvailable { enqueue([0xF6,3], label: "Wear detection refresh") }
+            if state.xm4.wearPowerOffAvailable { enqueue([0xF6,4], label: "Wear power off refresh") }
+            if state.xm4.dseeAvailable { enqueue([0xE6,2], label: "DSEE Extreme refresh") }
+            if let slot = state.xm4.multipointSlot { enqueue([0xD6,slot], label: "Multipoint refresh") }
+        }
     }
 
     private func enqueueSoundQualityQuery() {
@@ -513,6 +659,7 @@ final class SonyV1Client {
     private func interpret(_ payload: [UInt8]) {
         guard let opcode = payload.first else { return }
 
+        if isXM4 && parseXM4Setting(payload) { return }
         switch opcode {
         case SonyV1Opcode.initReturn:
             guard let version = SonyMDRProtocolVersion.detect(fromInitReply: payload) else {
@@ -568,7 +715,8 @@ final class SonyV1Client {
 
     private func parseModel(_ payload: [UInt8]) {
         if payload.count >= 4, payload[1] == 0x03 {
-            guard let color = HeadphoneColor(sonyValue: payload[3]) else { return }
+            let model = HeadphoneModel(deviceName: state.modelName ?? deviceName)
+            guard let color = model?.color(sonyValue: payload[3]) ?? HeadphoneColor(sonyValue: payload[3]) else { return }
             state.color = color
             publishState()
             return
@@ -668,7 +816,7 @@ final class SonyV1Client {
             guard payload[2] == 0x00, let mode = SonyV1SoundQualityMode(rawValue: payload[3]) else { return }
             state.soundQualityMode = mode
         case 0x02:
-            guard payload[3] <= 0x01 else { return }
+            guard payload[2] == 0x00, payload[3] <= 0x01 else { return }
             state.dseeEnabled = payload[3] == 0x01
         default:
             return
@@ -741,6 +889,7 @@ final class SonyV1Client {
     }
 
     private func resetProtocolState() {
+        cancelMultipointRequest()
         commandTimeoutTask?.cancel()
         handshakeFallbackTask?.cancel()
         readyFallbackTask?.cancel()

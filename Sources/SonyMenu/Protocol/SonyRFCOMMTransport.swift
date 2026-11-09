@@ -84,12 +84,30 @@ final class SonyRFCOMMTransport: NSObject, SonyRFCOMMTransporting {
             self.fail("Sony RFCOMM open timed out")
         }
 
+        if device.isConnected() {
+            discoverControlService(on: device)
+        } else {
+            // A multipoint change can drop the entire Bluetooth link. Open
+            // the baseband link before attempting its RFCOMM service.
+            let result = device.openConnection(self)
+            if device.isConnected() { discoverControlService(on: device) }
+            else if result != kIOReturnSuccess { fail("Could not reconnect the Sony Bluetooth link (\(result))") }
+        }
+    }
+
+    private func discoverControlService(on device: IOBluetoothDevice) {
+        guard status == .connecting, channel == nil else { return }
         if !findServiceAndOpen(on: device) {
             let result = device.performSDPQuery(self)
-            guard result == kIOReturnSuccess else {
-                fail("Could not start Sony service discovery (\(result))")
-                return
-            }
+            if result != kIOReturnSuccess { fail("Could not start Sony service discovery (\(result))") }
+        }
+    }
+
+    @objc nonisolated func connectionComplete(_ device: IOBluetoothDevice!, status result: IOReturn) {
+        Task { @MainActor [weak self] in
+            guard let self, let device, device === self.device, self.status == .connecting, self.channel == nil else { return }
+            guard device.isConnected() else { self.fail("Sony Bluetooth reconnection failed (\(result))"); return }
+            self.discoverControlService(on: device)
         }
     }
 

@@ -4,6 +4,11 @@ import ServiceManagement
 
 @MainActor
 protocol HeadphonePlatform: AnyObject {
+    var devices: [HeadphoneDevice] { get }
+    var modelName: String { get }
+    var preferredDeviceID: String? { get }
+    func selectDevice(_ id: String?)
+    func lockSelection(_ locked: Bool)
     var isPaired: Bool { get }
     var isConnected: Bool { get }
     var address: String? { get }
@@ -25,8 +30,21 @@ protocol HeadphonePlatform: AnyObject {
 @MainActor
 final class MacHeadphonePlatform: NSObject, HeadphonePlatform {
     private var device: IOBluetoothDevice?
+    private var selectionLocked = false
+    func lockSelection(_ locked: Bool) { selectionLocked = locked }
+    private(set) var devices: [HeadphoneDevice] = []
+    private let defaults = UserDefaults.standard
+    var preferredDeviceID: String? { defaults.string(forKey: "selectedHeadphoneID") }
+    var modelName: String { device?.name ?? defaults.string(forKey: "lastHeadphoneModel") ?? "WH-1000XM3" }
+    func selectDevice(_ id: String?) {
+        defaults.set(id, forKey: "selectedHeadphoneID")
+        findDevice()
+        watchDisconnect()
+        refreshVolume()
+        onConnection?()
+    }
     private var connectedNotification: IOBluetoothUserNotification?
-    private var disconnectedNotification: IOBluetoothUserNotification?
+    private var disconnectedNotifications: [IOBluetoothUserNotification] = []
     private var observers: [NSObjectProtocol] = []
     private var unlockObserver: NSObjectProtocol?
     private var volumeObserver: HeadphoneVolumeObserver?
@@ -41,8 +59,8 @@ final class MacHeadphonePlatform: NSObject, HeadphonePlatform {
     var loginEnabled: Bool { SMAppService.mainApp.status == .enabled }
     var volumeEventCount: Int { volumeObserver?.volumeEventCount ?? 0 }
     func disconnect() -> IOReturn { device?.closeConnection() ?? kIOReturnNotFound }
-    func readVolume() -> Double? { HeadphoneVolume.read() }
-    func writeVolume(_ value: Double) -> Bool { HeadphoneVolume.write(value) }
+    func readVolume() -> Double? { guard let id = device?.addressString else { return nil }; return HeadphoneVolume.read(target: id) }
+    func writeVolume(_ value: Double) -> Bool { guard let id = device?.addressString else { return false }; return HeadphoneVolume.write(value, target: id) }
     func readMicrophones() -> MicrophoneState { MacMicrophone.read() }
     func selectMicrophone(_ id: UInt32) -> Bool { MacMicrophone.select(id) }
     func observeMicrophones(_ changed: @escaping (MicrophoneState) -> Void) { microphoneObserver = MicrophoneObserver(changed: changed) }
@@ -59,27 +77,42 @@ final class MacHeadphonePlatform: NSObject, HeadphonePlatform {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { _ in MainActor.assumeIsolated { callback() } })
         }
         unlockObserver = DistributedNotificationCenter.default().addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main) { _ in MainActor.assumeIsolated { unlock() } }
-        volumeObserver = HeadphoneVolumeObserver(onChange: volume)
+        volumeObserver = HeadphoneVolumeObserver(target: { [weak self] in self?.device?.addressString ?? "" }, onChange: volume)
     }
 
     private func findDevice() {
-        guard device == nil else { return }
-        device = (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice])?.first { $0.name == "WH-1000XM3" }
+        let paired = (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? [])
+            .filter { HeadphoneModel(deviceName: $0.name ?? "") != nil }
+        devices = paired.compactMap { d in
+            guard let id = d.addressString, let name = d.name else { return nil }
+            return HeadphoneDevice(id: id, name: name, connected: d.isConnected())
+        }
+        if selectionLocked { return }
+        let selected = HeadphoneSelection.choose(devices, preferred: preferredDeviceID,
+            current: device?.addressString, remembered: defaults.string(forKey: "lastHeadphoneID"))
+        device = paired.first { $0.addressString == selected?.id }
+        if let selected {
+            defaults.set(selected.id, forKey: "lastHeadphoneID")
+            defaults.set(selected.name, forKey: "lastHeadphoneModel")
+        }
     }
 
     private func watchDisconnect() {
-        disconnectedNotification?.unregister()
-        disconnectedNotification = nil
-        if let device, device.isConnected() {
-            disconnectedNotification = device.register(forDisconnectNotification: self, selector: #selector(didDisconnect(_:device:)))
+        disconnectedNotifications.forEach { $0.unregister() }
+        disconnectedNotifications.removeAll()
+        let paired = IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? []
+        for candidate in paired where candidate.isConnected() && HeadphoneModel(deviceName: candidate.name ?? "") != nil {
+            if let notification = candidate.register(forDisconnectNotification: self, selector: #selector(didDisconnect(_:device:))) {
+                disconnectedNotifications.append(notification)
+            }
         }
     }
 
     @objc nonisolated private func didConnect(_ notification: IOBluetoothUserNotification!, device connected: IOBluetoothDevice!) {
-        guard let connected, connected.name == "WH-1000XM3" else { return }
+        guard let connected, HeadphoneModel(deviceName: connected.name ?? "") != nil else { return }
         Task { @MainActor [weak self] in
             guard let self, !self.stopped else { return }
-            self.device = connected
+            self.findDevice()
             self.watchDisconnect()
             self.refreshVolume()
             self.onConnection?()
@@ -89,8 +122,8 @@ final class MacHeadphonePlatform: NSObject, HeadphonePlatform {
     @objc nonisolated private func didDisconnect(_ notification: IOBluetoothUserNotification!, device disconnected: IOBluetoothDevice!) {
         Task { @MainActor [weak self] in
             guard let self, !self.stopped else { return }
-            self.disconnectedNotification?.unregister()
-            self.disconnectedNotification = nil
+            self.findDevice()
+            self.watchDisconnect()
             self.refreshVolume()
             self.onConnection?()
         }
@@ -100,7 +133,7 @@ final class MacHeadphonePlatform: NSObject, HeadphonePlatform {
     func stop() {
         stopped = true
         connectedNotification?.unregister(); connectedNotification = nil
-        disconnectedNotification?.unregister(); disconnectedNotification = nil
+        disconnectedNotifications.forEach { $0.unregister() }; disconnectedNotifications.removeAll()
         observers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }; observers.removeAll()
         if let unlockObserver { DistributedNotificationCenter.default().removeObserver(unlockObserver) }
         unlockObserver = nil

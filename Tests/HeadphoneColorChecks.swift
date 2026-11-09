@@ -19,7 +19,7 @@ extension TestMain {
             rig.store = HeadphoneStore(defaults: rig.defaults, platform: rig.platform, client: rig.client)
             try await wait { rig.store.ready && rig.store.state.color == .silver }
             try expect(rig.store.headphoneColor == .silver && rig.store.lastDetectedColor == .silver)
-            try expect(rig.defaults.string(forKey: "detectedHeadphoneColor") == "silver")
+            try expect(rig.defaults.string(forKey: "headphone.00-11-22-33-44-55.detectedHeadphoneColor") == "silver")
             try expect(rig.transport.commands.contains { $0.payload == [4, 3] })
             let count = rig.transport.commands.filter { $0.payload == [4, 3] }.count
             rig.store.refresh()
@@ -41,7 +41,7 @@ extension TestMain {
             try expect(rig.store.state.color == nil && rig.store.headphoneColor == .black)
             rig.store.colorChoice = .silver
             try expect(rig.store.headphoneColor == .silver)
-            try expect(rig.defaults.string(forKey: "headphoneColorChoice") == "silver")
+            try expect(rig.defaults.string(forKey: "headphone.00-11-22-33-44-55.headphoneColorChoice") == "silver")
         }
         await test("Manual color wins over reports and Auto restores the reported color") {
             let rig = TestRig(); defer { rig.close() }
@@ -64,7 +64,7 @@ extension TestMain {
             rig.transport.colorReply = [5,3,0,1]
             rig.store.connect()
             try await wait { rig.store.ready && rig.store.headphoneColor == .black }
-            try expect(rig.defaults.string(forKey: "detectedHeadphoneColor") == "black")
+            try expect(rig.defaults.string(forKey: "headphone.00-11-22-33-44-55.detectedHeadphoneColor") == "black")
         }
         await test("Invalid saved color settings safely fall back to Auto and black") {
             let rig = TestRig(start: false); defer { rig.close() }

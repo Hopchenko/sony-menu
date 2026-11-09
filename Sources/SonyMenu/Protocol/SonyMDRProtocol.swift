@@ -442,6 +442,7 @@ enum SonyV1Payloads {
 }
 
 struct SonyV1State: Equatable, Sendable {
+    var xm4 = SonyXM4Settings()
     var modelName: String?
     var color: HeadphoneColor?
     var batteryPercent: Int?

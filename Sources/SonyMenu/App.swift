@@ -41,7 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
             button.action = #selector(togglePopover)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.toolTip = "\(AppIdentity.displayName) — WH-1000XM3"
+            button.toolTip = AppIdentity.displayName
         }
         // Some macOS versions synchronously wait for CoreBluetooth callbacks
         // on the first IOBluetooth query. Keep the main run loop available.
@@ -72,10 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.auditWindow?.appearance = mode.native
             self.auditWindow?.contentView?.appearance = mode.native
         }.store(in: &subscriptions)
-        Publishers.CombineLatest3(store.$state.map(\.color), store.$colorChoice, store.$lastDetectedColor)
-            .map { reported, choice, remembered in choice.resolve(reported: reported, remembered: remembered) }
-            .removeDuplicates().sink { [weak self] color in self?.iconController.update(color) }
-            .store(in: &subscriptions)
+        store.objectWillChange.receive(on: RunLoop.main).sink { [weak self] _ in
+            guard let self else { return }
+            self.iconController.update(self.store.headphoneColor, model: self.store.model)
+            self.item.button?.toolTip = "\(AppIdentity.displayName) — \(self.store.modelName)"
+        }.store(in: &subscriptions)
+        iconController.update(store.headphoneColor, model: store.model)
         Publishers.CombineLatest3(store.$state, store.$showBattery, store.$connection)
             .receive(on: RunLoop.main).sink { [weak self] state, show, connection in
                 self?.item.button?.title = show && connection == .ready ? state.batteryPercent.map { " \($0)%" } ?? "" : ""
@@ -137,6 +139,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(12))
             var result: [String: Any] = ["connection": String(describing: store.connection), "bluetoothConnected": store.bluetoothConnected]
+            result["speakToChat"] = store.state.xm4.speakToChatEnabled
+            result["multipoint"] = store.state.xm4.multipointEnabled
+            result["wearDetection"] = store.state.xm4.wearDetectionEnabled
+            result["wearPowerOff"] = store.state.xm4.wearPowerOffEnabled
+            result["dseeExtreme"] = store.state.dseeEnabled
+            result["disconnectOnSleep"] = store.disconnectOnSleep
+            result["reconnectAfterUnlock"] = store.reconnectAfterUnlock
+            result["modelName"] = store.modelName
+            result["artworkName"] = store.artworkName
+            result["systemVolume"] = store.outputVolume
             result["displayName"] = AppIdentity.displayName
             result["bundleIdentifier"] = Bundle.main.bundleIdentifier
             result["launchAtLogin"] = store.launchAtLogin
@@ -159,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 for choice in [HeadphoneColorChoice.silver, .black] {
                     store.colorChoice = choice
                     try? await Task.sleep(for: .milliseconds(300))
-                    let expected = NSImage(named: NSImage.Name(store.headphoneColor.imageName))
+                    let expected = NSImage(named: NSImage.Name(store.artworkName))
                     let actual = NSApp.applicationIconImage
                     let finder = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
                     checks[choice.rawValue] = ["resolvedColor": store.headphoneColor.rawValue,
@@ -212,18 +224,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 result["idleBluetoothQueries"] = Diagnostics.shared.entries.filter { $0.contains("outgoing:") && !$0.contains("outgoing: ACK") }.count - queries
             }
             if CommandLine.arguments.contains("--verify-volume-sync") {
-                if let original = HeadphoneVolume.read(), original > 0 {
+                if let original = HeadphoneVolume.read(target: store.selectedDeviceID), original > 0 {
                     let count = store.volumeEventCount
                     let target = max(0, original - 0.03)
                     // Bypass the store, just as a system/AVRCP change does.
-                    let wrote = HeadphoneVolume.write(target)
+                    let wrote = HeadphoneVolume.write(target, target: store.selectedDeviceID)
                     try? await Task.sleep(for: .milliseconds(250))
                     result["externalVolumeWriteSucceeded"] = wrote
                     result["coreAudioVolumeEventReceived"] = store.volumeEventCount > count
                     result["externalVolumeSyncedToPanel"] = store.outputVolume.map { abs($0 - target) < 0.02 } ?? false
                     store.setVolume(original)
                     try? await Task.sleep(for: .milliseconds(250))
-                    result["panelWriteSyncedToMac"] = HeadphoneVolume.read().map { abs($0 - original) < 0.02 } ?? false
+                    result["panelWriteSyncedToMac"] = HeadphoneVolume.read(target: store.selectedDeviceID).map { abs($0 - original) < 0.02 } ?? false
                     result["originalVolumeRestored"] = store.outputVolume.map { abs($0 - original) < 0.02 } ?? false
                 } else { result["volumeSyncCheckSkipped"] = "Sony output unavailable or at zero volume" }
             }
@@ -237,20 +249,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 else { store.setMode(original) }
                 try? await Task.sleep(for: .seconds(3))
                 result["originalModeRestored"] = store.state.noiseMode == original
-                let originalVolume = HeadphoneVolume.read()
+                let originalVolume = HeadphoneVolume.read(target: store.selectedDeviceID)
                 if let originalVolume, originalVolume > 0 {
                     let targetVolume = max(0, originalVolume - 0.03)
                     store.setVolume(targetVolume)
                     try? await Task.sleep(for: .seconds(1))
                     store.client.refresh()
                     try? await Task.sleep(for: .seconds(1))
-                    result["volumeChangeConfirmed"] = HeadphoneVolume.read().map { abs($0 - targetVolume) < 0.02 } ?? false
+                    result["volumeChangeConfirmed"] = HeadphoneVolume.read(target: store.selectedDeviceID).map { abs($0 - targetVolume) < 0.02 } ?? false
                     store.setVolume(originalVolume)
                     try? await Task.sleep(for: .seconds(1))
                     store.client.refresh()
                     try? await Task.sleep(for: .seconds(1))
-                    result["originalVolumeRestored"] = HeadphoneVolume.read().map { abs($0 - originalVolume) < 0.02 } ?? false
+                    result["originalVolumeRestored"] = HeadphoneVolume.read(target: store.selectedDeviceID).map { abs($0 - originalVolume) < 0.02 } ?? false
                 }
+            }
+            if CommandLine.arguments.contains("--verify-ambient"), store.ready, let original = store.state.noiseMode {
+                let level = store.state.ambientLevel
+                let voice = store.state.focusOnVoice
+                store.client.setAmbient(level: 7, focusOnVoice: true)
+                try? await Task.sleep(for: .seconds(2))
+                result["ambientLevelAndVoiceConfirmed"] = store.state.noiseMode == .ambient && store.state.ambientLevel == 7 && store.state.focusOnVoice
+                store.client.setAmbient(level: 20, focusOnVoice: false)
+                try? await Task.sleep(for: .seconds(2))
+                result["ambientMaximumConfirmed"] = store.state.noiseMode == .ambient && store.state.ambientLevel == 20 && !store.state.focusOnVoice
+                if original == .ambient { store.client.setAmbient(level: level, focusOnVoice: voice) }
+                else { store.setMode(original) }
+                try? await Task.sleep(for: .seconds(2))
+                result["originalNoiseStateRestoredAfterAmbient"] = store.state.noiseMode == original && (original != .ambient || (store.state.ambientLevel == level && store.state.focusOnVoice == voice))
             }
             if CommandLine.arguments.contains("--verify-sleep"), store.ready {
                 result["sleepHandlerDisconnectedHeadphones"] = await store.verifySleepDisconnect()

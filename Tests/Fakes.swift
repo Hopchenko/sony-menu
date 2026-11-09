@@ -17,6 +17,18 @@ final class FakeTransport: SonyRFCOMMTransporting {
     var initReply: [UInt8] = [1, 0, 0x40, 0x10]
     var modelName = "WH-1000XM3"
     var colorReply: [UInt8]? = [5, 3, 0, 1]
+    var xm4FeaturesRespond = false
+    var featureWritesApply = true
+    var speakToChat = true
+    var conversationOptions = SonyConversationOptions()
+    var wearDetection = true
+    var wearPowerOff = true
+    var dsee = false
+    var multipoint = true
+    var multipointSlot: UInt8 = 0xD2
+    var dropConnectionOnMultipoint = false
+    var multipointConfirmationSubscribed = false
+    var requestedMultipoint: Bool?
     var soundQuality: UInt8 = 0
     var qualityWritesApply = true
     var qualityReplies = true
@@ -34,6 +46,7 @@ final class FakeTransport: SonyRFCOMMTransporting {
     }
 
     func disconnect() {
+        multipointConfirmationSubscribed = false; requestedMultipoint = nil
         disconnectCount += 1
         generation += 1
         status = .idle; onStatusChange?(status)
@@ -78,9 +91,61 @@ final class FakeTransport: SonyRFCOMMTransporting {
         case 0x68:
             noise = payload; noise[0] = 0x69; emit(noise); noise[0] = 0x67
         case 0xA6: emit([0xA7, 1, 0x20, 9])
+        case 0xF0 where xm4FeaturesRespond:
+            if payload == [0xF0,3] { emit([0xF1,3,0]) }
+            if payload == [0xF0,4] { emit([0xF1,4,2,0x10,0x11]) }
+            if payload == [0xF0,5] { emit([0xF1,5,0,1,0,0,0,0,15,30,60,0]) }
+        case 0xF6 where xm4FeaturesRespond:
+            if payload == [0xF6,3] { emit([0xF7,3,0,wearDetection ? 1 : 0]) }
+            if payload == [0xF6,4] { emit([0xF7,4,1,wearPowerOff ? 0x10 : 0x11,0]) }
+            if payload == [0xF6,5] { emit([0xF7,5,0,speakToChat ? 1 : 0]) }
+        case 0xFA where xm4FeaturesRespond:
+            emit([0xFB] + conversationOptions.payload.dropFirst())
+        case 0xFC where xm4FeaturesRespond:
+            if featureWritesApply, let options = SonyConversationOptions(reply: [0xFB] + payload.dropFirst()) { conversationOptions = options }
+            emit([0xFD] + conversationOptions.payload.dropFirst())
+        case 0xF8 where xm4FeaturesRespond:
+            if featureWritesApply, payload.count == 4 {
+                if payload[1] == 3 && payload[2] == 0 { wearDetection = payload[3] == 1 }
+                if payload[1] == 5 && payload[2] == 1 { speakToChat = payload[3] == 1 }
+            }
+            if featureWritesApply, payload.count == 5 && payload[1] == 4 { wearPowerOff = payload[3] == 0x10 }
+        case 0xE0 where xm4FeaturesRespond:
+            if payload == [0xE0,2] { emit([0xE1,2,2,0]) }
+        case 0xD0 where xm4FeaturesRespond:
+            if payload.count == 3 && payload[1] == multipointSlot {
+                let name = Array("MULTIPOINT_SETTING".utf8), summary = Array("MULTIPOINT_SETTING_SUMMARY".utf8)
+                emit([0xD1,multipointSlot,2,UInt8(name.count)] + name + [UInt8(summary.count)] + summary + [1,0])
+            }
+        case 0xD6 where xm4FeaturesRespond:
+            if payload == [0xD6,multipointSlot] { emit([0xD7,multipointSlot,1,multipoint ? 1 : 0]) }
+        case 0x94 where xm4FeaturesRespond:
+            if payload == [0x94,1,0] { multipointConfirmationSubscribed = true }
+        case 0x98 where xm4FeaturesRespond:
+            if let desired = requestedMultipoint, payload == [0x98,1,desired ? 6 : 7,1] {
+                requestedMultipoint = nil
+                if featureWritesApply { multipoint = desired }
+                if dropConnectionOnMultipoint {
+                    dropConnectionOnMultipoint = false
+                    status = .failed("Headset reconnecting after multipoint change"); onStatusChange?(status)
+                } else { emit([0xD9,multipointSlot,1,multipoint ? 1 : 0]) }
+            }
+        case 0xD8 where xm4FeaturesRespond:
+            if payload.count == 4 && payload[1] == multipointSlot && payload[2] == 1 {
+                let desired = payload[3] == 1
+                if multipointConfirmationSubscribed && multipoint != desired {
+                    requestedMultipoint = desired
+                    emit([0x99,1,desired ? 6 : 7,1])
+                } else { emit([0xD9,multipointSlot,1,multipoint ? 1 : 0]) }
+            }
         case 0xE6:
+            if payload == [0xE6,2], xm4FeaturesRespond { emit([0xE7,2,0,dsee ? 1 : 0]) }
             if payload == [0xE6, 1], qualityReplies { emit([0xE7, 1, 0, soundQuality]) }
         case 0xE8:
+            if payload.count == 4, payload[1] == 2, xm4FeaturesRespond {
+                if featureWritesApply { dsee = payload[3] == 1 }
+                emit([0xE9,2,0,dsee ? 1 : 0])
+            }
             if payload.count == 4, payload[1] == 1, payload[2] == 0, qualityWritesApply { soundQuality = payload[3] }
         default: break
         }
@@ -89,6 +154,12 @@ final class FakeTransport: SonyRFCOMMTransporting {
 
 @MainActor
 final class FakePlatform: HeadphonePlatform {
+    var devices: [HeadphoneDevice] = []
+    var selectionLocked = false
+    func lockSelection(_ locked: Bool) { selectionLocked = locked }
+    var modelName = "WH-1000XM3"
+    var preferredDeviceID: String?
+    func selectDevice(_ id: String?) { preferredDeviceID = id; onConnection?() }
     var isPaired = true
     var isConnected = true
     var address: String? = "00-11-22-33-44-55"

@@ -45,12 +45,12 @@ struct HeadphonePanel: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            if let image = NSImage(named: NSImage.Name(store.headphoneColor.imageName)) {
+            if let image = NSImage(named: NSImage.Name(store.artworkName)) {
                 Image(nsImage: image).resizable().scaledToFit().frame(width: 72, height: 88)
-                    .accessibilityLabel("\(store.headphoneColor.title) Sony WH-1000XM3 headphones")
+                    .accessibilityLabel("\(store.headphoneColor.title) Sony \(store.modelName) headphones")
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("WH-1000XM3").font(.system(size: 15, weight: .semibold))
+                Text(store.modelName).font(.system(size: 15, weight: .semibold))
                 Text(store.connectionLabel).font(.system(size: 12)).foregroundStyle(secondaryColor)
                 if let codec = store.state.codecName, store.ready {
                     Text("Codec: \(codec)").font(.system(size: 12)).foregroundStyle(secondaryColor)
@@ -198,7 +198,7 @@ struct HeadphonePanel: View {
             Text("Changes Mac input. Meet can use its own selection.")
                 .font(.system(size: 12)).foregroundStyle(secondaryColor)
                 .fixedSize(horizontal: false, vertical: true)
-            if store.microphones.devices.first(where: { $0.id == store.microphones.selectedID })?.name == "WH-1000XM3" {
+            if store.microphones.devices.first(where: { $0.id == store.microphones.selectedID })?.name == store.modelName {
                 Text("The headphone mic may enable call sidetone.")
                     .font(.system(size: 12)).foregroundStyle(secondaryColor)
                     .fixedSize(horizontal: false, vertical: true)
@@ -214,16 +214,22 @@ struct HeadphonePanel: View {
                 noticeView
                 appearanceSetting
                 VStack(alignment: .leading, spacing: 8) {
+                    Label("Headphones", systemImage: "headphones").font(.system(size: 13, weight: .medium))
+                    NativeMenuPicker(selection: Binding(get: { store.preferredDeviceID ?? "automatic" }, set: { store.selectDevice($0 == "automatic" ? nil : $0) }),
+                        options: [(value: "automatic", title: "Automatic")] + store.devices.map { (value: $0.id, title: "\($0.name) · \($0.connected ? "Connected" : "Disconnected")") }, label: "Headphones", enabled: store.sleepStatus == nil && store.pendingXM4Change == nil)
+                }.padding(14).background(cardColor, in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 8) {
                     sectionLabel("Audio", symbol: "waveform")
                     VStack(spacing: 12) {
-                        soundQualitySettings
+                        if store.model == .xm3 { soundQualitySettings }
                         microphoneSettings
                     }
                 }
+                if store.model == .xm4 { xm4Settings }
                 VStack(alignment: .leading, spacing: 8) {
                     sectionLabel("Connection", symbol: "bolt.horizontal.circle")
                     VStack(spacing: 0) {
-                        settingToggle("Disconnect when Mac sleeps", detail: "Release WH-1000XM3 when this Mac goes to sleep.", binding: $store.disconnectOnSleep)
+                        settingToggle("Disconnect when Mac sleeps", detail: "Release \(store.modelName) when this Mac goes to sleep.", binding: $store.disconnectOnSleep)
                         Divider()
                         settingToggle("Reconnect after unlock", detail: "Only if this app disconnected them.", binding: $store.reconnectAfterUnlock)
                             .disabled(!store.disconnectOnSleep)
@@ -241,7 +247,7 @@ struct HeadphonePanel: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Label("Headphone color", systemImage: "paintpalette").font(.system(size: 13, weight: .medium))
                             HStack(spacing: 8) {
-                                ForEach(HeadphoneColorChoice.allCases) { choice in colorTile(choice) }
+                                ForEach(store.colorChoices) { choice in colorTile(choice) }
                             }
                             Text(store.headphoneColorDetail).font(.system(size: 12)).foregroundStyle(secondaryColor)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -256,13 +262,62 @@ struct HeadphonePanel: View {
             .frame(height: settingsViewportHeight).padding(.trailing, -14)
     }
 
+    private func xm4Toggle(_ title: String, detail: String, value: Bool?, action: @escaping (Bool) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            settingToggle(title, detail: detail, binding: Binding(get: { value ?? false }, set: action))
+                .disabled(!store.canEditXM4Settings || value == nil)
+            if value == nil {
+                Text(store.ready ? "Not reported by this headset." : "Connect headphones to change this setting.")
+                    .font(.system(size: 12)).foregroundStyle(secondaryColor).padding(.bottom, 12)
+            }
+        }
+    }
+
+    private var xm4Settings: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("XM4 features", symbol: "headphones")
+            VStack(alignment: .leading, spacing: 0) {
+                xm4Toggle("Speak-to-Chat", detail: "Pauses music and lets voices through when you speak. May also trigger while singing or talking to yourself.", value: store.state.xm4.speakToChatEnabled, action: store.setSpeakToChat)
+                if let options = store.state.xm4.conversationOptions {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Voice detection sensitivity").font(.system(size: 13, weight: .medium))
+                        NativeMenuPicker(selection: Binding(get: { options.sensitivity.rawValue }, set: { if let value = SonyConversationSensitivity(rawValue: $0) { store.setConversationOptions(sensitivity: value) } }),
+                            options: SonyConversationSensitivity.allCases.map { (value: $0.rawValue, title: $0.title) }, label: "Voice detection sensitivity", enabled: store.canEditXM4Settings && store.state.xm4.speakToChatEnabled == true)
+                        Text("High detects quieter speech. Low reduces accidental activation.").font(.system(size: 12)).foregroundStyle(secondaryColor).fixedSize(horizontal: false, vertical: true)
+                        Text("Resume after speaking").font(.system(size: 13, weight: .medium)).padding(.top, 4)
+                        NativeMenuPicker(selection: Binding(get: { options.timeout.rawValue }, set: { if let value = SonyConversationTimeout(rawValue: $0) { store.setConversationOptions(timeout: value) } }),
+                            options: SonyConversationTimeout.allCases.map { (value: $0.rawValue, title: $0.title) }, label: "Resume after speaking", enabled: store.canEditXM4Settings && store.state.xm4.speakToChatEnabled == true)
+                        Text("Wait after speech stops before ending conversation mode. Manual only keeps it active until you end it on the headset.").font(.system(size: 12)).foregroundStyle(secondaryColor).fixedSize(horizontal: false, vertical: true)
+                        settingToggle("Focus on voices", detail: "Makes speech easier to hear while Speak-to-Chat is active.", binding: Binding(get: { options.focusOnVoice }, set: { store.setConversationOptions(focusOnVoice: $0) }))
+                            .disabled(!store.canEditXM4Settings || store.state.xm4.speakToChatEnabled != true)
+                    }.padding(.bottom, 12)
+                }
+            }.padding(.horizontal, 14).background(cardColor, in: RoundedRectangle(cornerRadius: 12))
+            VStack(spacing: 0) {
+                xm4Toggle("Connect to two devices", detail: "Keep your Mac and phone connected at the same time. Changing this disconnects Bluetooth briefly. Reconnect in Bluetooth settings if needed. LDAC is unavailable while enabled.", value: store.state.xm4.multipointEnabled, action: store.setMultipoint)
+            }.padding(.horizontal, 14).background(cardColor, in: RoundedRectangle(cornerRadius: 12))
+            VStack(spacing: 0) {
+                xm4Toggle("Automatic pause and resume", detail: "Pause music when you take the headphones off and resume when you put them on. Playback-app support may vary.", value: store.state.xm4.wearDetectionEnabled, action: store.setWearDetection)
+                Divider()
+                xm4Toggle("Power off when removed", detail: "Turn off after about 15 minutes without being worn. This is separate from disconnecting when your Mac sleeps.", value: store.state.xm4.wearPowerOffEnabled, action: store.setWearPowerOff)
+            }.padding(.horizontal, 14).background(cardColor, in: RoundedRectangle(cornerRadius: 12))
+            VStack(spacing: 0) {
+                xm4Toggle("DSEE Extreme", detail: "Enhances compressed audio. When on, Auto lets the headset decide when to apply it. Uses more battery.", value: store.state.xm4.dseeAvailable ? store.state.dseeEnabled : nil, action: store.setDSEE)
+            }.padding(.horizontal, 14).background(cardColor, in: RoundedRectangle(cornerRadius: 12))
+            if let status = store.xm4ChangeStatus {
+                Text(status).font(.system(size: 12)).foregroundStyle(secondaryColor).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(status)
+            }
+        }
+    }
+
     private func colorTile(_ choice: HeadphoneColorChoice) -> some View {
         let selected = store.colorChoice == choice
         let color = choice.resolve(reported: store.state.color, remembered: store.lastDetectedColor)
-        let title = choice == .automatic ? "Auto" : choice == .black ? "Black" : "Silver"
+        let title = choice == .automatic ? "Auto" : choice == .black ? "Black" : choice == .blue ? "Blue" : "Silver"
         return Button { store.colorChoice = choice } label: {
             VStack(spacing: 8) {
-                if let image = NSImage(named: NSImage.Name(color.imageName)) {
+                if let image = NSImage(named: NSImage.Name(store.model.imageName(color: color))) {
                     Image(nsImage: image).resizable().scaledToFit().frame(height: 58).accessibilityHidden(true)
                 }
                 Text(title).font(.system(size: 12, weight: selected ? .medium : .regular))

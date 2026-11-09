@@ -1,10 +1,10 @@
 import AppKit
 
 enum HeadphoneColor: String, CaseIterable, Identifiable, Sendable {
-    case black, silver
+    case black, silver, blue
     var id: String { rawValue }
-    var title: String { self == .black ? "Black" : "Silver / white" }
-    var imageName: String { self == .black ? "Headphones" : "HeadphonesSilver" }
+    var title: String { switch self { case .black: return "Black"; case .silver: return "Silver / white"; case .blue: return "Blue" } }
+    var imageName: String { switch self { case .black: return "Headphones"; case .silver: return "HeadphonesSilver"; case .blue: return "HeadphonesXM4Blue" } }
 
     init?(sonyValue: UInt8) {
         switch sonyValue {
@@ -16,19 +16,20 @@ enum HeadphoneColor: String, CaseIterable, Identifiable, Sendable {
 }
 
 enum HeadphoneColorChoice: String, CaseIterable, Identifiable {
-    case automatic, black, silver
+    case automatic, black, silver, blue
     var id: String { rawValue }
     var title: String {
-        switch self { case .automatic: return "Auto — match headphones"; case .black: return "Black"; case .silver: return "Silver / white" }
+        switch self { case .automatic: return "Auto — match headphones"; case .black: return "Black"; case .silver: return "Silver / white"; case .blue: return "Blue" }
     }
     func resolve(reported: HeadphoneColor?, remembered: HeadphoneColor?) -> HeadphoneColor {
-        switch self { case .automatic: return reported ?? remembered ?? .black; case .black: return .black; case .silver: return .silver }
+        switch self { case .automatic: return reported ?? remembered ?? .black; case .black: return .black; case .silver: return .silver; case .blue: return .blue }
     }
 }
 
 @MainActor
 final class HeadphoneIconController {
     private(set) var appliedColor: HeadphoneColor?
+    private(set) var appliedModel: HeadphoneModel?
     private(set) var finderIconUpdated = false
     private let image: @MainActor (HeadphoneColor) -> NSImage?
     private let applicationIcon: @MainActor (NSImage) -> Void
@@ -42,11 +43,14 @@ final class HeadphoneIconController {
         self.finderIcon = finderIcon
     }
 
-    func update(_ color: HeadphoneColor) {
-        guard color != appliedColor, let artwork = image(color) else { return }
+    func update(_ color: HeadphoneColor, model: HeadphoneModel = .xm3) {
+        guard color != appliedColor || model != appliedModel else { return }
+        let selectedImage = model == .xm3 ? image(color) : NSImage(named: NSImage.Name(model.imageName(color: color)))
+        guard let artwork = selectedImage else { return }
         applicationIcon(artwork)
         finderIconUpdated = finderIcon(artwork)
         appliedColor = color
+        appliedModel = model
     }
 }
 

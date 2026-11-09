@@ -13,7 +13,8 @@ notifications rather than repeating timers, and never modify unrelated audio
 devices. New controls should display state read back from the headset.
 
 For device reports, include the headphone model, firmware, macOS version, and
-the specific behavior you expected. WH-1000XM3 is currently the only validated
-model; a shared Sony service UUID alone does not establish compatibility.
+the specific behavior you expected. WH-1000XM3 and WH-1000XM4 have hardware validation recorded in VALIDATION.md;
+a shared Sony service UUID alone does not establish compatibility for another
+model. Preserve the XM4 idle-efficiency checks when adding feature queries.
 
 See [TESTING.md](TESTING.md) for live diagnostics and remaining manual checks.
