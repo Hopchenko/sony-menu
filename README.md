@@ -45,7 +45,7 @@ state; the displayed battery and volume values are examples.
 - **Readability:** larger helper text, section icons, named controls, a visible selected-mode checkmark, and scrollable Settings.
 - **Stable panel position:** an open panel stays anchored to where you opened it; Settings reserves a separate scrollbar gutter.
 - **Menu bar preferences:** battery percentage and optional launch at login.
-  Source builds run only in the menu bar, without a Dock or Command-Tab icon.
+  Runs only in the menu bar, without a Dock or Command-Tab icon.
 - **Low background activity:** Bluetooth and volume notifications instead of
   repeating polling timers; bounded retries, cancelled work on sleep, and no
   normal packet logging or keepalive requests.
@@ -132,10 +132,10 @@ writable location such as Applications so macOS can apply its custom icon.
 
 ## Install
 
-**Latest release: [1.5.1](https://github.com/Hopchenko/sony-menu/releases/latest)**,
-with XM3/XM4 automatic detection, XM4 settings, and connection-progress improvements.
+**Latest release: [1.5.2](https://github.com/Hopchenko/sony-menu/releases/latest)**,
+with XM3/XM4 support and menu-bar-only operation (no Dock or Command-Tab icon).
 
-1. [Download Sony Headphone Control 1.5.1 for Apple Silicon](https://github.com/Hopchenko/sony-menu/releases/download/v1.5.1/Sony-Headphone-Control-1.5.1-macOS-arm64.zip).
+1. [Download Sony Headphone Control 1.5.2 for Apple Silicon](https://github.com/Hopchenko/sony-menu/releases/download/v1.5.2/Sony-Headphone-Control-1.5.2-macOS-arm64.zip).
    All versions and SHA-256 checksums are available on the
    [Releases page](https://github.com/Hopchenko/sony-menu/releases/latest).
 2. Unzip the download and move **Sony Headphone Control.app** to Applications.
