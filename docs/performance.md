@@ -49,7 +49,7 @@ is optional and may have a system-level Bluetooth cost outside this process.
 are no new packets, connection attempts, connection checks or volume writes
 while idle. A second check verifies a completed XM4 settings change returns
 to idle without further reads or retries. The existing XM3 idle check remains.
-All 108 app tests passed, including cancellation and lifecycle coverage.
+All 115 app tests passed, including cancellation and lifecycle coverage.
 
 ## Reproduce on macOS
 

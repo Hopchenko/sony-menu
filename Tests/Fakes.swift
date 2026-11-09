@@ -12,6 +12,7 @@ final class FakeTransport: SonyRFCOMMTransporting {
     var disconnectCount = 0
     var autoRespond = true
     var connectFails = false
+    var connectFailuresRemaining = 0
     var writeFails = false
     var onConnect: (() -> Void)?
     var initReply: [UInt8] = [1, 0, 0x40, 0x10]
@@ -40,7 +41,10 @@ final class FakeTransport: SonyRFCOMMTransporting {
         connectCount += 1
         generation += 1
         status = .connecting; onStatusChange?(status)
-        if connectFails { status = .failed("simulated failure") }
+        if connectFails || connectFailuresRemaining > 0 {
+            if connectFailuresRemaining > 0 { connectFailuresRemaining -= 1 }
+            status = .failed("simulated failure")
+        }
         else { onConnect?(); status = .connected }
         onStatusChange?(status)
     }

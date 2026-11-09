@@ -68,13 +68,16 @@ final class HeadphoneStore: ObservableObject {
     private var stopped = false
     private var pendingControl: Task<Void, Never>?
     private var retryTask: Task<Void, Never>?
+    @Published private(set) var retryingConnection = false
     private var retryAttempt = 0
     private let retryDelays: [Duration]
     private(set) var connectionCheckCount = 0
 
     var ready: Bool { connection == .ready }
+    var isConnecting: Bool { connection == .connecting || retryingConnection }
     var connectionLabel: String {
         if let sleepStatus { return sleepStatus }
+        if isConnecting { return "Connecting…" }
         switch connection {
         case .ready: return "Connected"
         case .connecting: return "Connecting…"
@@ -108,14 +111,13 @@ final class HeadphoneStore: ObservableObject {
             guard let self, !self.stopped else { return }
             self.connection = connection
             if case .failed(let reason) = connection {
-                self.notice = reason
-                self.scheduleRetry()
+                self.notice = self.scheduleRetry() ? nil : reason
             }
             if connection == .ready {
                 self.notice = nil
                 self.bluetoothConnected = self.platform.isConnected
                 self.platform.refreshVolume()
-                self.retryTask?.cancel(); self.retryTask = nil
+                self.cancelRetry()
                 self.retryAttempt = 0
             }
             Diagnostics.shared.log("Connection: \(connection)")
@@ -140,7 +142,7 @@ final class HeadphoneStore: ObservableObject {
 
     private func connectionChanged() {
         retryAttempt = 0
-        retryTask?.cancel(); retryTask = nil
+        cancelRetry()
         checkConnection()
     }
 
@@ -151,7 +153,7 @@ final class HeadphoneStore: ObservableObject {
         synchronizeDevice()
         bluetoothConnected = platform.isConnected
         guard paired else {
-            retryTask?.cancel(); retryTask = nil
+            cancelRetry()
             if connection != .disconnected { client.disconnect() }
             notice = "Pair WH-1000XM3 or WH-1000XM4 in macOS Bluetooth settings first."
             return
@@ -161,7 +163,7 @@ final class HeadphoneStore: ObservableObject {
             return
         }
         if !bluetoothConnected {
-            retryTask?.cancel(); retryTask = nil
+            cancelRetry()
             if connection != .disconnected { client.disconnect() }
             return
         }
@@ -176,7 +178,7 @@ final class HeadphoneStore: ObservableObject {
         let wasSleeping = policy.isSleeping || policy.waitingForUnlock
         pendingControl?.cancel()
         cancelXM4Change()
-        retryTask?.cancel(); retryTask = nil; retryAttempt = 0
+        cancelRetry(); retryAttempt = 0
         client.disconnect()
         selectedDeviceID = platform.address
         model = HeadphoneModel(deviceName: platform.modelName) ?? .xm3
@@ -206,20 +208,29 @@ final class HeadphoneStore: ObservableObject {
         synchronizeDevice()
         sleepStatus = nil
         notice = nil
+        cancelRetry()
         client.connect(address: address, deviceName: modelName)
     }
 
-    private func scheduleRetry() {
+    private func cancelRetry() {
+        retryTask?.cancel(); retryTask = nil
+        retryingConnection = false
+    }
+
+    @discardableResult private func scheduleRetry() -> Bool {
         guard !stopped, !disconnecting, !policy.blocksAutomaticConnection,
-              platform.isConnected, retryTask == nil, retryAttempt < retryDelays.count else { return }
+              platform.isConnected, retryTask == nil, retryAttempt < retryDelays.count else { return false }
         let delay = retryDelays[retryAttempt]
         retryAttempt += 1
+        retryingConnection = true
         retryTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: delay)
             guard let self, !Task.isCancelled else { return }
             self.retryTask = nil
+            self.retryingConnection = false
             self.checkConnection()
         }
+        return true
     }
 
     func connect() {
@@ -227,7 +238,7 @@ final class HeadphoneStore: ObservableObject {
         cancelXM4Change()
         platform.lockSelection(false)
         policy.manualConnect()
-        retryTask?.cancel(); retryTask = nil
+        cancelRetry()
         retryAttempt = 0
         connectControlChannel()
     }
@@ -242,7 +253,7 @@ final class HeadphoneStore: ObservableObject {
     private func disconnectHeadphones() {
         guard !disconnecting else { return }
         disconnecting = true
-        retryTask?.cancel(); retryTask = nil
+        cancelRetry()
         pendingControl?.cancel()
         client.disconnect()
         if platform.isConnected {
@@ -388,7 +399,7 @@ final class HeadphoneStore: ObservableObject {
         cancelXM4Change()
         Diagnostics.shared.log("Will sleep. Disconnect requested: \(shouldDisconnect)")
         pendingControl?.cancel()
-        retryTask?.cancel(); retryTask = nil
+        cancelRetry()
         if shouldDisconnect { disconnectHeadphones() }
         else { client.disconnect() }
         if disconnectOnSleep { sleepStatus = "Disconnected for sleep" }
@@ -421,7 +432,7 @@ final class HeadphoneStore: ObservableObject {
         stopped = true
         cancelXM4Change()
         pendingControl?.cancel()
-        retryTask?.cancel(); retryTask = nil
+        cancelRetry()
         platform.stop()
         client.disconnect()
     }

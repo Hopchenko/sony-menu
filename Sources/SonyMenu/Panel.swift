@@ -19,6 +19,11 @@ struct HeadphonePanel: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            if store.devices.filter(\.connected).count > 1 {
+                Text("Controlling \(store.modelName). Mac audio output is selected separately.")
+                    .font(.system(size: 12)).foregroundStyle(secondaryColor)
+                    .fixedSize(horizontal: false, vertical: true).padding(.bottom, 12)
+            }
             if store.settingsShown { settings }
             else { controls }
             if !store.settingsShown { noticeView }
@@ -51,7 +56,12 @@ struct HeadphonePanel: View {
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(store.modelName).font(.system(size: 15, weight: .semibold))
-                Text(store.connectionLabel).font(.system(size: 12)).foregroundStyle(secondaryColor)
+                HStack(spacing: 6) {
+                    if store.isConnecting {
+                        ProgressView().controlSize(.small).scaleEffect(0.7).frame(width: 12, height: 12).accessibilityHidden(true)
+                    }
+                    Text(store.connectionLabel).font(.system(size: 12)).foregroundStyle(secondaryColor)
+                }
                 if let codec = store.state.codecName, store.ready {
                     Text("Codec: \(codec)").font(.system(size: 12)).foregroundStyle(secondaryColor)
                 }
@@ -117,14 +127,15 @@ struct HeadphonePanel: View {
 
 
             if !store.ready {
-                Button(store.connection == .connecting ? "Connecting…" : "Connect headphones") { store.connect() }
-                    .buttonStyle(.borderedProminent).disabled(store.connection == .connecting)
+                Button(store.isConnecting ? "Connecting…" : "Connect headphones") { store.connect() }
+                    .buttonStyle(.borderedProminent).disabled(store.isConnecting)
                     .padding(.vertical, 4)
             }
         }
     }
 
     private var noiseDescription: String {
+        if store.isConnecting { return "Connecting to the headphone controls…" }
         guard store.ready else { return "Connect your headphones to use these controls." }
         switch store.state.noiseMode {
         case .noiseCancellation: return "Reduce the noise around you."
@@ -217,6 +228,9 @@ struct HeadphonePanel: View {
                     Label("Headphones", systemImage: "headphones").font(.system(size: 13, weight: .medium))
                     NativeMenuPicker(selection: Binding(get: { store.preferredDeviceID ?? "automatic" }, set: { store.selectDevice($0 == "automatic" ? nil : $0) }),
                         options: [(value: "automatic", title: "Automatic")] + store.devices.map { (value: $0.id, title: "\($0.name) · \($0.connected ? "Connected" : "Disconnected")") }, label: "Headphones", enabled: store.sleepStatus == nil && store.pendingXM4Change == nil)
+                    Text("Automatic keeps the current connected headset. This selects controls; choose your Mac’s audio output separately.")
+                        .font(.system(size: 12)).foregroundStyle(secondaryColor)
+                        .fixedSize(horizontal: false, vertical: true)
                 }.padding(14).background(cardColor, in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 8) {
                     sectionLabel("Audio", symbol: "waveform")

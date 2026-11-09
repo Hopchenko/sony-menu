@@ -47,6 +47,7 @@ enum TestMain {
         await headphoneColorTests()
         await modelSupportTests()
         await xm4FeatureTests()
+        await discoveryTests()
         print("\n\(passed) tests passed; \(failed) failed.")
         exit(failed == 0 ? 0 : 1)
     }

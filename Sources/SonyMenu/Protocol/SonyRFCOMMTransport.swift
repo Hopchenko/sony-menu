@@ -49,6 +49,7 @@ final class SonyRFCOMMTransport: NSObject, SonyRFCOMMTransporting {
     private var device: IOBluetoothDevice?
     private var channel: IOBluetoothRFCOMMChannel?
     private var openTimeoutTask: Task<Void, Never>?
+    private var discovery: SonyControlServiceDiscovery?
     private var generation = 0
     private var requestedDisconnect = false
     private let logger = Logger(subsystem: "local.sonymenu.app", category: "SonyRFCOMM")
@@ -96,11 +97,20 @@ final class SonyRFCOMMTransport: NSObject, SonyRFCOMMTransporting {
     }
 
     private func discoverControlService(on device: IOBluetoothDevice) {
-        guard status == .connecting, channel == nil else { return }
-        if !findServiceAndOpen(on: device) {
-            let result = device.performSDPQuery(self)
-            if result != kIOReturnSuccess { fail("Could not start Sony service discovery (\(result))") }
-        }
+        guard status == .connecting, channel == nil, discovery == nil else { return }
+        let expectedGeneration = generation
+        let discovery = SonyControlServiceDiscovery(tryOpen: { [weak self] in
+            guard let self, self.generation == expectedGeneration, self.status == .connecting else { return true }
+            return self.findServiceAndOpen(on: device)
+        }, query: { [weak self] in
+            guard let self, self.generation == expectedGeneration, self.status == .connecting else { return kIOReturnAborted }
+            return device.performSDPQuery(self)
+        }, failure: { [weak self] message in
+            guard let self, self.generation == expectedGeneration else { return }
+            self.fail(message)
+        })
+        self.discovery = discovery
+        discovery.start()
     }
 
     @objc nonisolated func connectionComplete(_ device: IOBluetoothDevice!, status result: IOReturn) {
@@ -140,6 +150,7 @@ final class SonyRFCOMMTransport: NSObject, SonyRFCOMMTransporting {
         generation &+= 1
         openTimeoutTask?.cancel()
         openTimeoutTask = nil
+        discovery?.cancel(); discovery = nil
 
         let oldChannel = channel
         channel = nil
@@ -203,6 +214,7 @@ final class SonyRFCOMMTransport: NSObject, SonyRFCOMMTransporting {
         requestedDisconnect = false
         openTimeoutTask?.cancel()
         openTimeoutTask = nil
+        discovery?.cancel(); discovery = nil
         let oldChannel = channel
         channel = nil
         oldChannel?.setDelegate(nil)
@@ -214,15 +226,8 @@ final class SonyRFCOMMTransport: NSObject, SonyRFCOMMTransporting {
 
     private func handleSDPResult(device: IOBluetoothDevice?, status result: IOReturn) {
         guard status == .connecting, let expectedDevice = self.device,
-            device === expectedDevice
-        else { return }
-        guard result == kIOReturnSuccess else {
-            fail("Sony service discovery failed (\(result))")
-            return
-        }
-        if !findServiceAndOpen(on: expectedDevice) {
-            fail("No supported Sony MDR control service was found")
-        }
+            device === expectedDevice, channel == nil else { return }
+        discovery?.completed(status: result)
     }
 
     private func handleOpen(channel openedChannel: IOBluetoothRFCOMMChannel?, error: IOReturn) {
@@ -246,6 +251,7 @@ final class SonyRFCOMMTransport: NSObject, SonyRFCOMMTransporting {
         }
         openTimeoutTask?.cancel()
         openTimeoutTask = nil
+        discovery?.cancel(); discovery = nil
         updateStatus(.connected)
     }
 
@@ -261,6 +267,7 @@ final class SonyRFCOMMTransport: NSObject, SonyRFCOMMTransporting {
         guard let closedChannel, closedChannel === channel else { return }
         channel = nil
         device = nil
+        discovery?.cancel(); discovery = nil
         generation &+= 1
         openTimeoutTask?.cancel()
         openTimeoutTask = nil

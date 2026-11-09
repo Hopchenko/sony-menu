@@ -64,6 +64,13 @@ This selects the app's control target without changing the Mac's audio output.
 Color choices and sleep/reconnect preferences are saved separately per headset.
 Existing XM3 preferences migrate once; appearance and login settings stay global.
 A sleeping headset remains the sleep policy's target until unlock.
+A [spinner and Connecting status](docs/screenshots/connecting-dark.png) cover service discovery and automatic retries.
+If the control service is not ready immediately after Bluetooth connects, the
+app retries briefly without needing to close and reopen the panel. A terminal
+error appears only after its bounded recovery window ends. When both models
+are connected, the panel names the control target and reminds you that Mac audio
+output is selected separately.
+
 Disconnect on sleep defaults to On for XM3 and Off for XM4; an explicitly
 saved preference takes precedence.
 
@@ -246,7 +253,7 @@ Set `SONY_MENU_SIGNING_IDENTITY=-` to explicitly build ad-hoc (as release CI doe
 zsh test.sh
 ```
 
-**108 automated tests** cover framing and stream recovery, Bluetooth command
+**115 automated tests** cover framing and stream recovery, Bluetooth command
 queues, retries and errors, preferences, appearance, volume synchronization,
 sleep/wake intent, microphone routing and readback, lifecycle cleanup, idle
 behavior, and native panel rendering.

@@ -58,7 +58,7 @@ and headset restart before further control-channel verification.
 
 ## Validation
 
-108 app tests cover discovery, readback, no optimistic ACK updates, preservation
+115 app tests cover discovery, readback, no optimistic ACK updates, preservation
 of conversation fields, malformed input, XM3 isolation, unrelated confirmation
 rejection, session cleanup, reconnect handling, and native scrolling previews.
 The existing five signature-integrity tests also passed on the built bundle.

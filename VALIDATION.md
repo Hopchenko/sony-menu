@@ -185,3 +185,25 @@ Two new XM4 regressions verify no packets, connection checks, retries or volume
 writes after discovery, and no extra queries/retries after a completed setting
 change. All 108 app tests pass. See docs/performance.md for details and the
 optional Tools/measure-idle.c sampler for reproduction.
+
+
+## 1.5.1 delayed control-service discovery — 2026-11-09
+
+The owner reported both XM3 and XM4 briefly showing Controls unavailable /
+No supported Sony MDR control service was found, followed by successful control
+when the panel was reopened. Model selection itself was already correct.
+
+A fresh SDP discovery now retries missing records or transient SDP errors after
+1, 2 and 4 seconds within the existing overall connection deadline. It stops
+on success, disconnect, generation change or shutdown. Connected-headset
+retries remain bounded. UI status stays Connecting with a native spinner while
+recovery is pending; only exhausted recovery shows a terminal error.
+
+Added regressions cover late service availability, finite failures, cancelled
+and stale callbacks, transient query-start failure, recovery without a panel
+refresh, retry exhaustion, manual cancellation, and the native loading layout.
+All 115 tests pass. No periodic idle scan was introduced.
+
+When both headsets stay connected, Automatic intentionally retains its current
+connected control target. A new panel notice and Settings description explain
+that the Mac's audio output can independently use the other headset.

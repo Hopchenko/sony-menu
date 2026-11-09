@@ -6,7 +6,7 @@
 zsh test.sh
 ```
 
-The suite currently contains 108 named tests. It compiles the production source
+The suite currently contains 115 named tests. It compiles the production source
 with LLVM instrumentation, runs against isolated preferences and simulated
 Bluetooth/macOS services, and renders native SwiftUI panels in Light, Dark,
 and Auto appearance. It never changes your real headphone or login settings.
