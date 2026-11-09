@@ -187,3 +187,27 @@ See [docs/xm4-features.md](docs/xm4-features.md) for feature command/readback
 validation and the multipoint confirmation/reconnect behavior. Do not repeat
 multipoint writes as part of an idle audit; the read-only `--verify-idle`
 diagnostic and process-counter sampler are sufficient.
+
+
+## XM3/XM4 automatic selection
+
+Choose Settings → Headphones → Automatic and keep the panel open throughout.
+Use macOS Bluetooth settings for these connection changes.
+
+| Step | Expected result |
+| --- | --- |
+| Disconnect both headsets | Last model retained as Disconnected; noise controls disabled |
+| Connect only XM3 | XM3 artwork/name; spinner and Connecting during discovery; Connected with battery/codec without reopening the panel |
+| Disconnect XM3, connect XM4 | Switch to XM4 artwork/name, load controls, show XM4 settings |
+| Leave XM4 connected, connect XM3 too | Retain XM4 as the control target; explain independent Mac audio routing |
+| Briefly turn noise control Off, then restore it | Only the displayed target headset changes |
+| Disconnect the current target while the other stays connected | Automatically select and load the other connected headset without reopening |
+| Explicitly select XM3, disconnect it while XM4 stays connected | Retain XM3 as Disconnected; returning to Automatic selects XM4 |
+
+Audio playback may move to a different headset independently of the app's
+control selection. A brief loading period is expected; requiring a panel
+close/reopen is a regression. If a test fails, record the step, connected
+headsets, displayed model/status and approximate wait time.
+
+Owner-reported result on 9 November 2026 with version 1.5.1: works. See
+VALIDATION.md for the scope of this confirmation.

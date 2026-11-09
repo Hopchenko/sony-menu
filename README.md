@@ -64,6 +64,10 @@ This selects the app's control target without changing the Mac's audio output.
 Color choices and sleep/reconnect preferences are saved separately per headset.
 Existing XM3 preferences migrate once; appearance and login settings stay global.
 A sleeping headset remains the sleep policy's target until unlock.
+Automatic detection and connection recovery on XM3/XM4 were confirmed on
+real hardware with version 1.5.1. See the [manual test checklist](TESTING.md#xm3xm4-automatic-selection)
+and [validation notes](VALIDATION.md).
+
 A [spinner and Connecting status](docs/screenshots/connecting-dark.png) cover service discovery and automatic retries.
 If the control service is not ready immediately after Bluetooth connects, the
 app retries briefly without needing to close and reopen the panel. A terminal

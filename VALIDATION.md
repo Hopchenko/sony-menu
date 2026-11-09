@@ -207,3 +207,15 @@ All 115 tests pass. No periodic idle scan was introduced.
 When both headsets stay connected, Automatic intentionally retains its current
 connected control target. A new panel notice and Settings description explain
 that the Mac's audio output can independently use the other headset.
+
+
+### Owner confirmation — 2026-11-09
+
+After installing 1.5.1 and receiving the manual XM3/XM4 autodetection checklist,
+the owner confirmed that the updated behavior works. This is an owner-reported
+hardware confirmation of the connection/loading and selection workflow; no
+per-step timings or additional measurements were recorded. The reproducible
+checklist is in TESTING.md under XM3/XM4 automatic selection.
+
+The 1.5.1 GitHub build, native tests, signature checks and packaging also passed
+for commit 3e5c79c.
