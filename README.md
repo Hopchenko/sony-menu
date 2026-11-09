@@ -4,6 +4,8 @@ Control Sony WH-1000XM3 and WH-1000XM4 noise cancellation, ambient sound, and vo
 your Mac’s menu bar. A native SwiftUI app that talks directly to the headphones
 over Bluetooth—no phone app, account, server, or package dependencies.
 
+**[Install ↓](#install)** · [Build from source](#build-from-source)
+
 **macOS 14+ · Apple Silicon · Unofficial · MIT-licensed code**
 
 <table>
@@ -48,7 +50,6 @@ state; the displayed battery and volume values are examples.
   normal packet logging or keepalive requests.
 
 The quality selector controls Sony’s [sound quality mode](https://helpguide.sony.net/mdr/wh1000xm3/v1/en/contents/TP0001703137.html). Changing it may interrupt audio or reconnect the headset. It does not force a particular codec; the codec label shows what the headphones report.
-
 
 
 ## Automatic headset selection
@@ -130,17 +131,20 @@ writable location such as Applications so macOS can apply its custom icon.
 
 ## Install
 
-**XM4 features require version 1.5.0 or newer.** If the latest downloadable
-release is older, [build from source](#build-from-source) for XM4 support.
+**Current source version: 1.5.1**, including XM3/XM4 automatic detection, XM4
+settings, and connection-progress improvements. To install this version now,
+[build from source](#build-from-source).
 
+The latest published download is **1.3.3**, which predates XM4 support.
+For the published XM3 release:
 
 1. Download the Apple Silicon `.zip` from
    [Releases](https://github.com/Hopchenko/sony-menu/releases/latest).
 2. Quit the previous version, unzip it, and move **Sony Headphone Control.app** to Applications.
    When upgrading from Sony Menu, remove the old **Sony Menu.app** after replacing it. The source installer migrates that name automatically.
 3. Open the app and allow Bluetooth access if prompted.
-4. Pair/connect your **WH-1000XM3 or WH-1000XM4** in macOS Bluetooth settings, then click the
-   headphones icon in the menu bar.
+4. Pair/connect your **WH-1000XM3** in macOS Bluetooth settings, then click the
+   headphones icon in the menu bar. For **WH-1000XM4**, use the current source build above.
 
 The downloadable app is **ad-hoc signed, not notarized**. macOS may block its
 first launch. If you choose to trust this build, follow Apple’s instructions
