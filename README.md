@@ -45,6 +45,7 @@ state; the displayed battery and volume values are examples.
 - **Readability:** larger helper text, section icons, named controls, a visible selected-mode checkmark, and scrollable Settings.
 - **Stable panel position:** an open panel stays anchored to where you opened it; Settings reserves a separate scrollbar gutter.
 - **Menu bar preferences:** battery percentage and optional launch at login.
+  Source builds run only in the menu bar, without a Dock or Command-Tab icon.
 - **Low background activity:** Bluetooth and volume notifications instead of
   repeating polling timers; bounded retries, cancelled work on sleep, and no
   normal packet logging or keepalive requests.

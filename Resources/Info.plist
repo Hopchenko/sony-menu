@@ -10,7 +10,7 @@
   <key>CFBundleShortVersionString</key><string>1.5.1</string>
   <key>CFBundleVersion</key><string>12</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
-  <key>LSUIElement</key><false/>
+  <key>LSUIElement</key><true/>
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSBluetoothAlwaysUsageDescription</key><string>Sony Headphone Control uses Bluetooth to read battery and control noise cancellation, ambient sound, and volume on your Sony WH-1000XM3 or WH-1000XM4 headphones.</string>

@@ -11,7 +11,7 @@ app = Path(sys.argv[1] if len(sys.argv) > 1 else "build/Applications.noindex/Son
 info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
 assert info["CFBundleIdentifier"] == "local.sonymenu.app"
 assert info["CFBundleDisplayName"] == "Sony Headphone Control"
-assert info.get("LSUIElement", False) is False
+assert info.get("LSUIElement") is True, "Menu-bar app must not appear in the Dock"
 assert info["LSApplicationCategoryType"] == "public.app-category.utilities"
 assert info.get("NSBluetoothAlwaysUsageDescription")
 executable = app / "Contents/MacOS" / info["CFBundleExecutable"]
