@@ -7,29 +7,18 @@ over Bluetooth—no phone app, account, server, or package dependencies.
 **macOS 14+ · Apple Silicon · Unofficial · MIT-licensed code**
 
 <table>
-<tr><th>XM4 · Light controls</th><th>XM4 · Dark controls</th></tr>
-<tr><td><img src="docs/screenshots/xm4-light-controls.png" alt="Blue WH-1000XM4 controls in Light appearance" width="360"></td><td><img src="docs/screenshots/xm4-dark-controls.png" alt="Blue WH-1000XM4 controls in Dark appearance" width="360"></td></tr>
-<tr><th>XM4 · Speak-to-Chat settings</th><th>XM4 · Dark settings</th></tr>
-<tr><td><img src="docs/screenshots/xm4-conversation-light.png" alt="XM4 Speak-to-Chat, sensitivity and resume-delay settings with descriptions" width="360"></td><td><img src="docs/screenshots/xm4-conversation-dark.png" alt="XM4 conversation settings with descriptions in Dark appearance" width="360"></td></tr>
+<tr><th>WH-1000XM3 · Light</th><th>WH-1000XM4 · Light</th></tr>
+<tr><td><img src="docs/screenshots/light-controls.png" alt="WH-1000XM3 controls in Light appearance" width="360"></td><td><img src="docs/screenshots/xm4-light-controls.png" alt="Blue WH-1000XM4 controls in Light appearance" width="360"></td></tr>
+<tr><th>WH-1000XM3 · Dark</th><th>WH-1000XM4 · Dark</th></tr>
+<tr><td><img src="docs/screenshots/dark-controls.png" alt="WH-1000XM3 controls in Dark appearance" width="360"></td><td><img src="docs/screenshots/xm4-dark-controls.png" alt="Blue WH-1000XM4 controls in Dark appearance" width="360"></td></tr>
 </table>
 
-Native UI test renders use representative device state; the displayed battery
-and volume values are examples. [XM4 overview](docs/screenshots/xm4-overview-light.png) ·
-[Multipoint settings](docs/screenshots/xm4-multipoint-light.png) ·
-[Wear detection and DSEE](docs/screenshots/xm4-wearing-light.png) ·
-[Dark wear detection and DSEE](docs/screenshots/xm4-wearing-dark.png)
-
-<details>
-<summary>WH-1000XM3 screenshots</summary>
-
-<table>
-<tr><th>XM3 · Light controls</th><th>XM3 · Dark controls</th></tr>
-<tr><td><img src="docs/screenshots/light-controls.png" alt="WH-1000XM3 controls in Light appearance" width="360"></td><td><img src="docs/screenshots/dark-controls.png" alt="WH-1000XM3 controls in Dark appearance" width="360"></td></tr>
-</table>
-
-[Light settings](docs/screenshots/light-settings.png) · [Dark settings](docs/screenshots/dark-settings.png)
-
-</details>
+Both models are shown above. Native UI test renders use representative device
+state; the displayed battery and volume values are examples.
+[XM3 Light settings](docs/screenshots/light-settings.png) ·
+[XM3 Dark settings](docs/screenshots/dark-settings.png) ·
+[XM4 overview](docs/screenshots/xm4-overview-light.png) ·
+[XM4 multipoint settings](docs/screenshots/xm4-multipoint-light.png)
 
 ## Features
 
@@ -105,6 +94,8 @@ but macOS may require a manual reconnect. See [XM4 protocol and validation
 notes](docs/xm4-features.md) for the measured behavior and remaining limitations.
 
 <table>
+<tr><th>XM4 · Speak-to-Chat settings</th><th>XM4 · Dark conversation settings</th></tr>
+<tr><td><img src="docs/screenshots/xm4-conversation-light.png" alt="XM4 Speak-to-Chat, sensitivity and resume-delay settings with descriptions" width="360"></td><td><img src="docs/screenshots/xm4-conversation-dark.png" alt="XM4 conversation settings with descriptions in Dark appearance" width="360"></td></tr>
 <tr><th>XM4 · Wearing and DSEE</th><th>XM4 · Dark wearing and DSEE</th></tr>
 <tr><td><img src="docs/screenshots/xm4-wearing-light.png" alt="XM4 automatic pause/resume, wearing power-off, DSEE Extreme and sleep settings" width="360"></td><td><img src="docs/screenshots/xm4-wearing-dark.png" alt="XM4 wearing and DSEE descriptions in Dark appearance" width="360"></td></tr>
 </table>
